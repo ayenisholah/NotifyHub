@@ -42,6 +42,14 @@ export {
 } from './route-queue.js';
 export type { RouteJobData, RouteQueueProducer } from './route-queue.js';
 export {
+  createDlqProducer,
+  DLQ_JOB_NAME,
+  DLQ_QUEUE_NAME,
+  DlqRetryConflictError,
+  resetDlqDelivery,
+} from './dlq.js';
+export type { DlqJobData, DlqProducer } from './dlq.js';
+export {
   calculateDeliveryBackoff,
   createDeliveryBackoffStrategy,
   DELIVERY_BACKOFF_BASE_MS,

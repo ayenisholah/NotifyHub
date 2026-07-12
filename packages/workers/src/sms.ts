@@ -5,6 +5,7 @@ import {
   CHANNEL_QUEUE_NAMES,
   createRedisConnection,
   createDeliveryBackoffStrategy,
+  createDlqProducer,
   DeliveryStatus,
   DeliveryTransitionConflictError,
   transitionDelivery,
@@ -14,6 +15,7 @@ import {
 
 import type { SmsProvider, SmsSendResult } from './sms-provider.js';
 import { ClassifiedDeliveryError } from './execution-error.js';
+import { parkFailedDelivery } from './dlq.js';
 import { runClassifiedDelivery } from './retry.js';
 import { renderTemplateField, type TemplateWarning } from './template-renderer.js';
 
@@ -171,11 +173,15 @@ export interface SmsWorker {
   close(): Promise<void>;
 }
 export function createSmsWorker(redisUrl: string, handler: SmsDeliveryHandler): SmsWorker {
+  const dlq = createDlqProducer(redisUrl);
   const worker = new Worker<ChannelJobData>(
     CHANNEL_QUEUE_NAMES[Channel.SMS],
     async (job) =>
-      runClassifiedDelivery(handler.prisma, job.data.deliveryId, async () =>
-        handler(job.data.deliveryId),
+      runClassifiedDelivery(
+        handler.prisma,
+        job.data.deliveryId,
+        async () => handler(job.data.deliveryId),
+        async (error) => parkFailedDelivery(handler.prisma, dlq, job.data.deliveryId, error),
       ),
     {
       connection: createRedisConnection(redisUrl),
@@ -183,5 +189,10 @@ export function createSmsWorker(redisUrl: string, handler: SmsDeliveryHandler): 
     },
   );
   worker.on('error', () => undefined);
-  return { close: async () => worker.close() };
+  return {
+    async close() {
+      await worker.close();
+      await dlq.close();
+    },
+  };
 }

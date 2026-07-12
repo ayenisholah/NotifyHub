@@ -77,6 +77,7 @@ export {
   ProviderDeliveryError,
 } from './execution-error.js';
 export { recordDeliveryFailure, runClassifiedDelivery } from './retry.js';
+export { parkFailedDelivery } from './dlq.js';
 export type { DeliveryFailureOutcome } from './retry.js';
 export type {
   HandleSmsDeliveryOptions,

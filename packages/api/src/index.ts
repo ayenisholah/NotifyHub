@@ -15,6 +15,22 @@ import {
   type PrismaClient,
 } from '@notifyhub/core';
 
+import {
+  DlqNotFoundError,
+  DlqRetryConflictError,
+  type ListDlqHandler,
+  type RetryDlqHandler,
+} from './dlq.js';
+
+export {
+  createPersistentDlqHandlers,
+  decodeDlqCursor,
+  DlqNotFoundError,
+  DlqRetryConflictError,
+  encodeDlqCursor,
+} from './dlq.js';
+export type { DlqListItem, DlqListResult, ListDlqHandler, RetryDlqHandler } from './dlq.js';
+
 export const packageIdentity = '@notifyhub/api' as const;
 export const dependencies = [corePackage] as const;
 
@@ -81,6 +97,7 @@ export function createPersistentNotifyHandler(
 export interface CreateAppOptions {
   apiKey: string;
   notify: NotifyHandler;
+  dlq?: { operatorKey: string; list: ListDlqHandler; retry: RetryDlqHandler };
 }
 
 const unauthorized = {
@@ -148,6 +165,8 @@ const errorHandler: ErrorRequestHandler = (error, _request, response, _next) => 
 export function createApp(options: CreateAppOptions): express.Express {
   const app = express();
   const expectedDigest = digest(`Bearer ${options.apiKey}`);
+  const operatorDigest =
+    options.dlq === undefined ? undefined : digest(`Bearer ${options.dlq.operatorKey}`);
 
   app.post(
     '/v1/notify',
@@ -173,6 +192,70 @@ export function createApp(options: CreateAppOptions): express.Express {
       response.status(result.replayed ? 200 : 202).json({ notificationId: result.notificationId });
     },
   );
+
+  if (options.dlq !== undefined && operatorDigest !== undefined) {
+    app.get('/v1/dlq', authenticate(operatorDigest), async (request, response) => {
+      const parsed = z
+        .object({
+          limit: z.coerce.number().int().min(1).max(100).default(50),
+          cursor: z.string().min(1).optional(),
+        })
+        .safeParse(request.query);
+      if (!parsed.success) {
+        response
+          .status(422)
+          .json({ error: { code: 'validation_error', message: 'Invalid DLQ query' } });
+        return;
+      }
+      try {
+        response.json(
+          await options.dlq!.list({
+            limit: parsed.data.limit,
+            ...(parsed.data.cursor === undefined ? {} : { cursor: parsed.data.cursor }),
+          }),
+        );
+      } catch (error) {
+        if (error instanceof Error && error.message === 'Invalid DLQ cursor') {
+          response
+            .status(422)
+            .json({ error: { code: 'validation_error', message: 'Invalid DLQ cursor' } });
+          return;
+        }
+        throw error;
+      }
+    });
+    app.post(
+      '/v1/dlq/:deliveryId/retry',
+      authenticate(operatorDigest),
+      async (request, response) => {
+        const parsed = z.string().uuid().safeParse(request.params.deliveryId);
+        if (!parsed.success) {
+          response
+            .status(422)
+            .json({ error: { code: 'validation_error', message: 'Invalid delivery ID' } });
+          return;
+        }
+        try {
+          const result = await options.dlq!.retry(parsed.data);
+          response.status(result.replayed ? 200 : 202).json({ deliveryId: parsed.data });
+        } catch (error) {
+          if (error instanceof DlqNotFoundError) {
+            response
+              .status(404)
+              .json({ error: { code: 'not_found', message: 'DLQ delivery not found' } });
+            return;
+          }
+          if (error instanceof DlqRetryConflictError) {
+            response
+              .status(409)
+              .json({ error: { code: 'conflict', message: 'Delivery is not eligible for retry' } });
+            return;
+          }
+          throw error;
+        }
+      },
+    );
+  }
 
   app.use(errorHandler);
   return app;
