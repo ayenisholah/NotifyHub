@@ -50,6 +50,19 @@ export {
 } from './dlq.js';
 export type { DlqJobData, DlqProducer } from './dlq.js';
 export {
+  createDigestQueueProducer,
+  DIGEST_JOB_NAME,
+  DIGEST_QUEUE_NAME,
+  joinDigestBatch,
+} from './digest.js';
+export type {
+  DigestJobData,
+  DigestJobEnqueuer,
+  DigestQueueProducer,
+  JoinDigestBatchInput,
+  JoinDigestBatchResult,
+} from './digest.js';
+export {
   calculateDeliveryBackoff,
   createDeliveryBackoffStrategy,
   DELIVERY_BACKOFF_BASE_MS,

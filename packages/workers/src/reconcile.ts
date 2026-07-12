@@ -3,6 +3,7 @@ import {
   NotificationStatus,
   type ChannelJobEnqueuer,
   type DlqProducer,
+  type DigestJobEnqueuer,
   type PrismaClient,
 } from '@notifyhub/core';
 
@@ -12,12 +13,14 @@ export interface ReconciliationResult {
   notifications: number;
   deliveries: number;
   deadLetters: number;
+  digestBatches: number;
 }
 
 export interface ReconciliationDependencies {
   routeJobs: { enqueue(notificationId: string): Promise<void> };
   channelJobs: ChannelJobEnqueuer;
   dlq: Pick<DlqProducer, 'park'>;
+  digestJobs?: DigestJobEnqueuer;
 }
 
 export async function reconcilePersistedWork(
@@ -75,9 +78,22 @@ export async function reconcilePersistedWork(
     }
   }
 
+  const digestBatches =
+    dependencies.digestJobs === undefined
+      ? []
+      : await prisma.digestBatch.findMany({
+          where: { status: 'OPEN' },
+          select: { id: true, windowEndsAt: true },
+        });
+  if (dependencies.digestJobs !== undefined) {
+    for (const batch of digestBatches)
+      await dependencies.digestJobs.enqueue(batch.id, batch.windowEndsAt);
+  }
+
   return {
     notifications: notifications.length,
     deliveries: active.length,
     deadLetters: terminal.length,
+    digestBatches: digestBatches.length,
   };
 }

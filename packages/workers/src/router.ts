@@ -6,11 +6,13 @@ import {
   createRedisConnection,
   DeliveryStatus,
   evaluateRouting,
+  joinDigestBatch,
   NotificationStatus,
   resolvePreference,
   resolveQuietHours,
   ROUTE_QUEUE_NAME,
   type ChannelJobEnqueuer,
+  type DigestJobEnqueuer,
   type PrismaClient,
   type RouteJobData,
 } from '@notifyhub/core';
@@ -40,13 +42,17 @@ export class RouterConflictError extends Error {
   }
 }
 
-type PreparedRoute = RouteNotificationResult | { retry: true };
+type PreparedRoute =
+  | { status: typeof NotificationStatus.ROUTED; deliveryIds: string[]; digestBatchIds: string[] }
+  | { status: typeof NotificationStatus.NO_OP; deliveryIds: []; digestBatchIds: [] }
+  | { retry: true };
 
 export function createRouteNotificationHandler(
   prisma: PrismaClient,
   channelJobs: ChannelJobEnqueuer,
   providers: ProviderMapping,
   now: () => Date = () => new Date(),
+  digestJobs: DigestJobEnqueuer = { enqueue: async () => undefined },
 ): RouteNotificationHandler {
   for (const [channel, provider] of Object.entries(providers)) {
     if (provider.trim() === '') throw new Error(`Provider must not be empty for ${channel}`);
@@ -59,6 +65,7 @@ export function createRouteNotificationHandler(
           where: { id: notificationId },
           include: {
             deliveries: { orderBy: { channel: 'asc' } },
+            digestItems: { select: { batchId: true } },
             user: {
               select: {
                 timezone: true,
@@ -71,20 +78,27 @@ export function createRouteNotificationHandler(
         if (notification === null) throw new NotificationNotFoundError(notificationId);
 
         if (notification.status === NotificationStatus.NO_OP) {
-          return { status: NotificationStatus.NO_OP, deliveryIds: [] };
+          return { status: NotificationStatus.NO_OP, deliveryIds: [], digestBatchIds: [] };
         }
         if (notification.status === NotificationStatus.ROUTED) {
-          if (notification.deliveries.length === 0) throw new RouterConflictError(notificationId);
+          if (notification.deliveries.length === 0 && notification.digestItems.length === 0)
+            throw new RouterConflictError(notificationId);
           return {
             status: NotificationStatus.ROUTED,
             deliveryIds: notification.deliveries.map(({ id }) => id),
+            digestBatchIds: [...new Set(notification.digestItems.map(({ batchId }) => batchId))],
           };
         }
 
         const templates = await transaction.template.findMany({
           where: { event: notification.event, locale: 'en' },
           orderBy: { channel: 'asc' },
-          select: { channel: true, digestEnabled: true },
+          select: {
+            channel: true,
+            digestEnabled: true,
+            digestBody: true,
+            digestWindowMinutes: true,
+          },
         });
         if (templates.length === 0) {
           const updated = await transaction.notification.updateMany({
@@ -92,7 +106,7 @@ export function createRouteNotificationHandler(
             data: { status: NotificationStatus.NO_OP, noOpReason: NO_TEMPLATES_REASON },
           });
           return updated.count === 1
-            ? { status: NotificationStatus.NO_OP, deliveryIds: [] }
+            ? { status: NotificationStatus.NO_OP, deliveryIds: [], digestBatchIds: [] }
             : { retry: true };
         }
 
@@ -124,7 +138,10 @@ export function createRouteNotificationHandler(
             preferenceEnabled: preference.enabled,
             critical,
             quietHoursActive: quietHours.active,
-            digestEnabled: false,
+            digestEnabled:
+              template.channel !== Channel.IN_APP &&
+              template.digestEnabled &&
+              template.digestBody !== null,
           });
           return decision.outcome === 'skip'
             ? []
@@ -136,7 +153,7 @@ export function createRouteNotificationHandler(
             data: { status: NotificationStatus.NO_OP, noOpReason: PREFERENCES_DISABLED_REASON },
           });
           return updated.count === 1
-            ? { status: NotificationStatus.NO_OP, deliveryIds: [] }
+            ? { status: NotificationStatus.NO_OP, deliveryIds: [], digestBatchIds: [] }
             : { retry: true };
         }
 
@@ -147,7 +164,20 @@ export function createRouteNotificationHandler(
         if (updated.count !== 1) return { retry: true };
 
         const deliveries = [];
+        const digestBatchIds = new Set<string>();
         for (const { template, preference, decision, scheduledFor } of enabledTemplates) {
+          if (decision.outcome === 'digest') {
+            const { batch } = await joinDigestBatch(transaction, {
+              userId: notification.userId,
+              event: notification.event,
+              channel: template.channel,
+              notificationId,
+              routedAt,
+              windowMinutes: template.digestWindowMinutes,
+            });
+            digestBatchIds.add(batch.id);
+            continue;
+          }
           const scheduled = decision.outcome === 'schedule';
           if (scheduled && scheduledFor === null) throw new RouterConflictError(notificationId);
           const delivery = await createDelivery(transaction, {
@@ -174,6 +204,7 @@ export function createRouteNotificationHandler(
         return {
           status: NotificationStatus.ROUTED,
           deliveryIds: deliveries.map(({ id }) => id),
+          digestBatchIds: [...digestBatchIds],
         };
       });
 
@@ -191,8 +222,15 @@ export function createRouteNotificationHandler(
             delivery.scheduledFor ?? undefined,
           );
         }
+        const batches = await prisma.digestBatch.findMany({
+          where: { id: { in: prepared.digestBatchIds }, status: 'OPEN' },
+          select: { id: true, windowEndsAt: true },
+        });
+        for (const batch of batches) await digestJobs.enqueue(batch.id, batch.windowEndsAt);
       }
-      return prepared;
+      return prepared.status === NotificationStatus.NO_OP
+        ? { status: NotificationStatus.NO_OP, deliveryIds: [] }
+        : { status: NotificationStatus.ROUTED, deliveryIds: prepared.deliveryIds };
     }
 
     throw new RouterConflictError(notificationId);

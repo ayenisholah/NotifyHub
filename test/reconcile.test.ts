@@ -8,6 +8,11 @@ describe('persisted work reconciliation', () => {
     const scheduledFor = new Date('2026-07-13T08:00:00.000Z');
     const prisma = {
       notification: { findMany: vi.fn(async () => [{ id: 'notification-1' }]) },
+      digestBatch: {
+        findMany: vi.fn(async () => [
+          { id: 'digest-1', windowEndsAt: new Date('2026-07-12T12:10:00.000Z') },
+        ]),
+      },
       delivery: {
         findMany: vi
           .fn()
@@ -37,14 +42,20 @@ describe('persisted work reconciliation', () => {
     const routeJobs = { enqueue: vi.fn(async () => undefined) };
     const channelJobs = { enqueue: vi.fn(async () => undefined) };
     const dlq = { park: vi.fn(async () => undefined) };
+    const digestJobs = { enqueue: vi.fn(async () => undefined) };
 
     await expect(
       reconcilePersistedWork(
         prisma,
-        { routeJobs, channelJobs, dlq },
+        { routeJobs, channelJobs, dlq, digestJobs },
         new Date('2026-07-12T12:00:00.000Z'),
       ),
-    ).resolves.toEqual({ notifications: 1, deliveries: 3, deadLetters: 1 });
+    ).resolves.toEqual({
+      notifications: 1,
+      deliveries: 3,
+      deadLetters: 1,
+      digestBatches: 1,
+    });
     expect(routeJobs.enqueue).toHaveBeenCalledWith('notification-1');
     expect(channelJobs.enqueue.mock.calls).toEqual([
       [Channel.EMAIL, 'queued', undefined],
@@ -52,6 +63,10 @@ describe('persisted work reconciliation', () => {
       [Channel.EMAIL, 'processing', undefined],
     ]);
     expect(dlq.park).toHaveBeenCalledWith('parked');
+    expect(digestJobs.enqueue).toHaveBeenCalledWith(
+      'digest-1',
+      new Date('2026-07-12T12:10:00.000Z'),
+    );
   });
 
   it('reports an empty idempotent sweep without queue writes', async () => {
@@ -67,7 +82,12 @@ describe('persisted work reconciliation', () => {
         { routeJobs: { enqueue }, channelJobs: { enqueue: vi.fn() }, dlq: { park } },
         new Date(),
       ),
-    ).resolves.toEqual({ notifications: 0, deliveries: 0, deadLetters: 0 });
+    ).resolves.toEqual({
+      notifications: 0,
+      deliveries: 0,
+      deadLetters: 0,
+      digestBatches: 0,
+    });
     expect(enqueue).not.toHaveBeenCalled();
     expect(park).not.toHaveBeenCalled();
   });
