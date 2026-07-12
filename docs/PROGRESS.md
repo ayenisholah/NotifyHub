@@ -60,3 +60,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (`npm ci` with a workspace-local cache; `scripts/verify.ps1`; `bash scripts/verify.sh`; format, lint, strict compilation, build, and 33 local Vitest tests all passed; focused API tests passed; `git diff --check`). Docker-backed PostgreSQL/Redis suites were collected but could not run locally because no container runtime is installed; they remain required by GitHub Actions.
 - Next: W1D2-3 — Atomic delivery timeline transitions.
 - Blockers/notes: user creation, router consumption, and automated reconciliation of accepted rows after Redis failure remain deferred. Accepted rows are intentionally not deleted when enqueueing fails.
+
+## 2026-07-12 — W1D2-3
+
+- Did: added atomic queued/scheduled delivery creation with initial events; compare-and-set delivery transitions with a forward-only state graph; typed missing, stale, and invalid-state errors; monotonic attempt validation; state-specific provider/error metadata; and PostgreSQL coverage for the complete graph, concurrent winners, terminal and stale rejection, ordered timelines, and rollback when event insertion fails.
+- Verify: PASS (`scripts/verify.ps1`; `bash scripts/verify.sh`; format, lint, strict compilation, build, and local Vitest tests passed; `npm audit`; `git diff --check`). Docker-backed lifecycle integration remains required by GitHub Actions because no local container runtime is installed.
+- Next: W1D3-1 — Router and template discovery.
+- Blockers/notes: router/worker consumers and DLQ retry semantics remain deferred. Future delivery state changes must use the exported lifecycle helpers; `DLQ → QUEUED` is intentionally not supported yet.

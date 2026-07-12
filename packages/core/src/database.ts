@@ -11,7 +11,7 @@ export function createPrismaClient(databaseUrl: string): PrismaClient {
   return new PrismaClient({ adapter });
 }
 
-export type { PrismaClient } from './generated/prisma/client.js';
+export type { Delivery, PrismaClient } from './generated/prisma/client.js';
 export {
   Channel,
   DeliveryStatus,
