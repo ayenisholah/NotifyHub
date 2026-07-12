@@ -22,4 +22,5 @@
 - Added an idempotent digest flush worker with an authoritative batch-to-delivery link and digest-aware email/SMS rendering.
 - Added short-lived HMAC user tokens and tenant-scoped inbox pagination, unread counts, and idempotent single/all read-state REST endpoints.
 - Added an authenticated raw WebSocket inbox gateway with verified-subject rooms, authoritative unread events, validated Redis routing, and idempotent lifecycle cleanup.
+- Added a packable React and vanilla DOM inbox widget with validated REST and WebSocket loading, cursor pagination, optimistic read actions, reconnect polling fallback, accessible neutral UI, and external React peers.
 - Established `docs/notifyhub-engineering-doc.md` as the canonical engineering source of truth.

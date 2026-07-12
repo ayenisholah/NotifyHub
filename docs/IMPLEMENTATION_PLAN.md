@@ -58,7 +58,7 @@ Tasks are executed top to bottom. The first unchecked box is the current task. D
 - [x] **W2D1-2 — Digest flush worker**
 - [x] **W2D2-1 — User-scoped inbox REST**
 - [x] **W2D2-2 — Authenticated WebSocket gateway (M2)**
-- [ ] **W2D3-1 — Packable React/vanilla widget**
+- [x] **W2D3-1 — Packable React/vanilla widget**
 - [ ] **W2D3-2 — Accessible neutral demo host**
 - [ ] **W2D3-3 — Sanitized public dashboard**
 - [ ] **W2D4-1 — Health, readiness, metrics, shutdown**
