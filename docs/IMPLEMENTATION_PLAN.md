@@ -23,7 +23,7 @@ Tasks are executed top to bottom. The first unchecked box is the current task. D
 
 ### Day 2 — Ingestion and state
 
-- [ ] **W1D2-1 — API authentication and request validation**
+- [x] **W1D2-1 — API authentication and request validation**
   - Done when: positive and negative authentication/validation tests pass.
 - [ ] **W1D2-2 — Persist-first idempotent ingestion**
   - Done when: new requests return 202 and concurrent replays return 200 with one ID.
