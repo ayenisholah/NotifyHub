@@ -1,4 +1,6 @@
 import { packageIdentity as corePackage } from '@notifyhub/core';
+export { INBOX_MESSAGE_CREATED, INBOX_PUBSUB_CHANNEL } from '@notifyhub/core';
+export type { InboxEventMessage, InboxMessageCreatedEvent } from '@notifyhub/core';
 
 export {
   createRouteNotificationHandler,
@@ -18,8 +20,6 @@ export {
   createInAppDeliveryHandler,
   createInboxPublisher,
   createInAppWorker,
-  INBOX_MESSAGE_CREATED,
-  INBOX_PUBSUB_CHANNEL,
   InAppDeliveryError,
   InAppDeliveryNotFoundError,
   InAppTemplateNotFoundError,
@@ -113,8 +113,6 @@ export type {
 export type {
   CloseableInboxPublisher,
   HandleInAppDeliveryOptions,
-  InboxEventMessage,
-  InboxMessageCreatedEvent,
   InboxPublisher,
   InAppDeliveryHandler,
   InAppWorker,

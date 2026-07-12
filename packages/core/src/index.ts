@@ -72,6 +72,13 @@ export {
 } from './retry-policy.js';
 export { InvalidQuietHoursError, resolveQuietHours } from './quiet-hours.js';
 export type { QuietHoursInput, QuietHoursResult } from './quiet-hours.js';
+export {
+  inboxEventMessageSchema,
+  inboxMessageCreatedEventSchema,
+  INBOX_MESSAGE_CREATED,
+  INBOX_PUBSUB_CHANNEL,
+} from './inbox-events.js';
+export type { InboxEventMessage, InboxMessageCreatedEvent } from './inbox-events.js';
 export { evaluateRouting, resolvePreference, ROUTING_REASONS } from './routing-precedence.js';
 export type {
   PreferenceResolution,

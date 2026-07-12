@@ -21,4 +21,5 @@
 - Added race-safe digest batch creation and joining, stable delayed flush jobs, digest-aware routing and replay, template integrity constraints, and digest job reconciliation.
 - Added an idempotent digest flush worker with an authoritative batch-to-delivery link and digest-aware email/SMS rendering.
 - Added short-lived HMAC user tokens and tenant-scoped inbox pagination, unread counts, and idempotent single/all read-state REST endpoints.
+- Added an authenticated raw WebSocket inbox gateway with verified-subject rooms, authoritative unread events, validated Redis routing, and idempotent lifecycle cleanup.
 - Established `docs/notifyhub-engineering-doc.md` as the canonical engineering source of truth.

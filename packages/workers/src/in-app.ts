@@ -8,8 +8,11 @@ import {
   createDeliveryBackoffStrategy,
   DeliveryStatus,
   DeliveryTransitionConflictError,
+  INBOX_MESSAGE_CREATED,
+  INBOX_PUBSUB_CHANNEL,
   transitionDeliveryInTransaction,
   type ChannelJobData,
+  type InboxMessageCreatedEvent,
   type PrismaClient,
 } from '@notifyhub/core';
 
@@ -17,24 +20,6 @@ import {
   renderTemplateField,
   type TemplateWarning as SharedTemplateWarning,
 } from './template-renderer.js';
-
-export const INBOX_PUBSUB_CHANNEL = 'notifyhub:inbox';
-export const INBOX_MESSAGE_CREATED = 'inbox.message.created';
-
-export interface InboxEventMessage {
-  id: string;
-  notificationId: string;
-  title: string;
-  body: string;
-  readAt: string | null;
-  createdAt: string;
-}
-
-export interface InboxMessageCreatedEvent {
-  type: typeof INBOX_MESSAGE_CREATED;
-  userId: string;
-  message: InboxEventMessage;
-}
 
 export interface InboxPublisher {
   publish(event: InboxMessageCreatedEvent): Promise<void>;

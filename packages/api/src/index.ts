@@ -40,6 +40,7 @@ export {
   UserNotFoundError,
 } from './inbox.js';
 export type {
+  CountUnreadInboxHandler,
   InboxCursor,
   InboxHandlers,
   InboxListResult,
@@ -50,6 +51,18 @@ export type {
   ReadAllInboxHandler,
   ReadInboxMessageHandler,
 } from './inbox.js';
+export { createInboxWebSocketGateway } from './websocket-gateway.js';
+export type {
+  CreateInboxGatewayOptions,
+  InboxGateway,
+  InboxGatewayClientEvent,
+  InboxGatewayDiagnostic,
+  InboxGatewayDiagnosticCode,
+  InboxGatewayDiagnosticHandler,
+  InboxGatewayLifecycle,
+  InboxGatewayRooms,
+  InboxEventSubscriber,
+} from './websocket-gateway.js';
 export {
   InvalidUserTokenError,
   issueUserToken,
