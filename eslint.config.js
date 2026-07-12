@@ -5,9 +5,20 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/coverage/**', 'sample/**', 'notifyhub-engineering-doc.md'],
+    ignores: [
+      '**/dist/**',
+      '**/dist-client/**',
+      '**/dist-server/**',
+      '**/coverage/**',
+      'sample/**',
+      'notifyhub-engineering-doc.md',
+    ],
   },
   eslint.configs.recommended,
+  {
+    files: ['**/*.mjs'],
+    languageOptions: { globals: globals.node },
+  },
   {
     files: ['**/*.ts'],
     extends: [...tseslint.configs.recommended],
