@@ -17,3 +17,9 @@
 - Status: accepted
 - Decision: public reads contain synthetic summaries only; mutations require an operator key; measurements require raw evidence.
 - Rationale: the public demo must not leak recipient/provider data or imply unverified operation.
+
+## D-004 — BullMQ-safe queue names
+
+- Status: accepted
+- Decision: use `send-email`, `send-sms`, and `send-inapp` as the runtime channel queue names.
+- Rationale: BullMQ 5 rejects colons in queue names, so the engineering document's conceptual `send:*` labels cannot be used verbatim.
