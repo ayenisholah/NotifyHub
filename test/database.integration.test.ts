@@ -6,10 +6,15 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   Channel,
+  createDelivery,
   createPrismaClient,
+  DeliveryNotFoundError,
   DeliveryStatus,
+  DeliveryTransitionConflictError,
   DigestBatchStatus,
+  InvalidDeliveryStateError,
   NotificationStatus,
+  transitionDelivery,
   type PrismaClient,
 } from '../packages/core/src/index.js';
 
@@ -191,5 +196,285 @@ describe.sequential('PostgreSQL persistence', () => {
     });
 
     expect(messages.map(({ id }) => id)).toEqual([second.id, first.id]);
+  });
+});
+
+describe.sequential('atomic delivery lifecycle', () => {
+  async function notificationFor(label: string) {
+    const user = await prisma.user.create({
+      data: { id: `lifecycle-${label}`, email: `lifecycle-${label}@example.test` },
+    });
+    return prisma.notification.create({
+      data: { userId: user.id, event: 'lifecycle.test', payload: {} },
+    });
+  }
+
+  it('creates queued and scheduled deliveries with matching initial events', async () => {
+    const notification = await notificationFor('creation');
+    const scheduledFor = new Date(Date.now() + 60_000);
+    const queued = await createDelivery(prisma, {
+      notificationId: notification.id,
+      channel: Channel.EMAIL,
+      provider: 'mailpit',
+      detail: { reason: 'immediate' },
+    });
+    const scheduled = await createDelivery(prisma, {
+      notificationId: notification.id,
+      channel: Channel.SMS,
+      provider: 'mock-sms',
+      initialStatus: DeliveryStatus.SCHEDULED,
+      scheduledFor,
+      detail: { reason: 'quiet_hours' },
+    });
+
+    await expect(
+      prisma.deliveryEvent.findMany({
+        where: { deliveryId: { in: [queued.id, scheduled.id] } },
+        orderBy: { id: 'asc' },
+      }),
+    ).resolves.toMatchObject([
+      { deliveryId: queued.id, status: DeliveryStatus.QUEUED, detail: { reason: 'immediate' } },
+      {
+        deliveryId: scheduled.id,
+        status: DeliveryStatus.SCHEDULED,
+        detail: { reason: 'quiet_hours' },
+      },
+    ]);
+    expect(scheduled.scheduledFor).toEqual(scheduledFor);
+  });
+
+  it('supports the complete forward transition graph with an ordered event history', async () => {
+    const notification = await notificationFor('graph');
+    const sent = await createDelivery(prisma, {
+      notificationId: notification.id,
+      channel: Channel.EMAIL,
+      provider: 'mailpit',
+    });
+    await transitionDelivery(prisma, {
+      deliveryId: sent.id,
+      expectedStatus: DeliveryStatus.QUEUED,
+      status: DeliveryStatus.PROCESSING,
+      attempts: 1,
+    });
+    const completed = await transitionDelivery(prisma, {
+      deliveryId: sent.id,
+      expectedStatus: DeliveryStatus.PROCESSING,
+      status: DeliveryStatus.SENT,
+      attempts: 1,
+      providerMessageId: 'provider-1',
+    });
+
+    const retried = await createDelivery(prisma, {
+      notificationId: notification.id,
+      channel: Channel.SMS,
+      provider: 'mock-sms',
+      initialStatus: DeliveryStatus.SCHEDULED,
+      scheduledFor: new Date(Date.now() + 60_000),
+    });
+    await transitionDelivery(prisma, {
+      deliveryId: retried.id,
+      expectedStatus: DeliveryStatus.SCHEDULED,
+      status: DeliveryStatus.PROCESSING,
+      attempts: 1,
+    });
+    await transitionDelivery(prisma, {
+      deliveryId: retried.id,
+      expectedStatus: DeliveryStatus.PROCESSING,
+      status: DeliveryStatus.RETRYING,
+      attempts: 1,
+      lastError: 'temporary',
+    });
+    await transitionDelivery(prisma, {
+      deliveryId: retried.id,
+      expectedStatus: DeliveryStatus.RETRYING,
+      status: DeliveryStatus.PROCESSING,
+      attempts: 2,
+    });
+    await transitionDelivery(prisma, {
+      deliveryId: retried.id,
+      expectedStatus: DeliveryStatus.PROCESSING,
+      status: DeliveryStatus.FAILED,
+      attempts: 2,
+      lastError: 'exhausted',
+    });
+    const deadLettered = await transitionDelivery(prisma, {
+      deliveryId: retried.id,
+      expectedStatus: DeliveryStatus.FAILED,
+      status: DeliveryStatus.DLQ,
+      attempts: 2,
+      lastError: 'exhausted',
+    });
+
+    expect(completed).toMatchObject({
+      status: DeliveryStatus.SENT,
+      attempts: 1,
+      providerMessageId: 'provider-1',
+    });
+    expect(deadLettered).toMatchObject({
+      status: DeliveryStatus.DLQ,
+      attempts: 2,
+      lastError: 'exhausted',
+    });
+    const events = await prisma.deliveryEvent.findMany({
+      where: { deliveryId: retried.id },
+      orderBy: { id: 'asc' },
+    });
+    expect(events.map(({ status }) => status)).toEqual([
+      DeliveryStatus.SCHEDULED,
+      DeliveryStatus.PROCESSING,
+      DeliveryStatus.RETRYING,
+      DeliveryStatus.PROCESSING,
+      DeliveryStatus.FAILED,
+      DeliveryStatus.DLQ,
+    ]);
+  });
+
+  it('rejects missing, invalid, stale, and terminal transitions without new events', async () => {
+    const notification = await notificationFor('rejections');
+    const delivery = await createDelivery(prisma, {
+      notificationId: notification.id,
+      channel: Channel.EMAIL,
+      provider: 'mailpit',
+    });
+    await expect(
+      transitionDelivery(prisma, {
+        deliveryId: '00000000-0000-0000-0000-000000000000',
+        expectedStatus: DeliveryStatus.QUEUED,
+        status: DeliveryStatus.PROCESSING,
+      }),
+    ).rejects.toBeInstanceOf(DeliveryNotFoundError);
+    await expect(
+      transitionDelivery(prisma, {
+        deliveryId: delivery.id,
+        expectedStatus: DeliveryStatus.QUEUED,
+        status: DeliveryStatus.SENT,
+      }),
+    ).rejects.toBeInstanceOf(InvalidDeliveryStateError);
+    await transitionDelivery(prisma, {
+      deliveryId: delivery.id,
+      expectedStatus: DeliveryStatus.QUEUED,
+      status: DeliveryStatus.PROCESSING,
+    });
+    await expect(
+      transitionDelivery(prisma, {
+        deliveryId: delivery.id,
+        expectedStatus: DeliveryStatus.QUEUED,
+        status: DeliveryStatus.PROCESSING,
+      }),
+    ).rejects.toBeInstanceOf(DeliveryTransitionConflictError);
+    await transitionDelivery(prisma, {
+      deliveryId: delivery.id,
+      expectedStatus: DeliveryStatus.PROCESSING,
+      status: DeliveryStatus.SENT,
+    });
+    await expect(
+      transitionDelivery(prisma, {
+        deliveryId: delivery.id,
+        expectedStatus: DeliveryStatus.SENT,
+        status: DeliveryStatus.PROCESSING,
+      }),
+    ).rejects.toBeInstanceOf(InvalidDeliveryStateError);
+    expect(await prisma.deliveryEvent.count({ where: { deliveryId: delivery.id } })).toBe(3);
+  });
+
+  it('allows exactly one concurrent compare-and-set transition', async () => {
+    const notification = await notificationFor('concurrent');
+    const delivery = await createDelivery(prisma, {
+      notificationId: notification.id,
+      channel: Channel.EMAIL,
+      provider: 'mailpit',
+    });
+    const results = await Promise.allSettled(
+      Array.from({ length: 8 }, () =>
+        transitionDelivery(prisma, {
+          deliveryId: delivery.id,
+          expectedStatus: DeliveryStatus.QUEUED,
+          status: DeliveryStatus.PROCESSING,
+        }),
+      ),
+    );
+
+    expect(results.filter(({ status }) => status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter(({ status }) => status === 'rejected')).toHaveLength(7);
+    expect(await prisma.deliveryEvent.count({ where: { deliveryId: delivery.id } })).toBe(2);
+  });
+
+  it('rejects decreasing attempts and fields that do not apply to the target state', async () => {
+    const notification = await notificationFor('metadata');
+    const delivery = await createDelivery(prisma, {
+      notificationId: notification.id,
+      channel: Channel.EMAIL,
+      provider: 'mailpit',
+    });
+    await transitionDelivery(prisma, {
+      deliveryId: delivery.id,
+      expectedStatus: DeliveryStatus.QUEUED,
+      status: DeliveryStatus.PROCESSING,
+      attempts: 2,
+    });
+    await expect(
+      transitionDelivery(prisma, {
+        deliveryId: delivery.id,
+        expectedStatus: DeliveryStatus.PROCESSING,
+        status: DeliveryStatus.RETRYING,
+        attempts: 1,
+      }),
+    ).rejects.toBeInstanceOf(InvalidDeliveryStateError);
+    await expect(
+      transitionDelivery(prisma, {
+        deliveryId: delivery.id,
+        expectedStatus: DeliveryStatus.PROCESSING,
+        status: DeliveryStatus.RETRYING,
+        providerMessageId: 'wrong-state',
+      }),
+    ).rejects.toBeInstanceOf(InvalidDeliveryStateError);
+    expect(await prisma.deliveryEvent.count({ where: { deliveryId: delivery.id } })).toBe(2);
+  });
+
+  it('rolls back the delivery update when the event insert fails', async () => {
+    const notification = await notificationFor('rollback');
+    const delivery = await createDelivery(prisma, {
+      notificationId: notification.id,
+      channel: Channel.EMAIL,
+      provider: 'mailpit',
+    });
+    await prisma.$executeRawUnsafe(`
+      CREATE FUNCTION reject_forced_delivery_event() RETURNS trigger AS $$
+      BEGIN
+        IF NEW.detail->>'forceFailure' = 'true' THEN
+          RAISE EXCEPTION 'forced delivery event failure';
+        END IF;
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE TRIGGER reject_forced_delivery_event
+      BEFORE INSERT ON delivery_events
+      FOR EACH ROW EXECUTE FUNCTION reject_forced_delivery_event()
+    `);
+
+    try {
+      await expect(
+        transitionDelivery(prisma, {
+          deliveryId: delivery.id,
+          expectedStatus: DeliveryStatus.QUEUED,
+          status: DeliveryStatus.PROCESSING,
+          detail: { forceFailure: true },
+        }),
+      ).rejects.toThrow();
+    } finally {
+      await prisma.$executeRawUnsafe(
+        'DROP TRIGGER reject_forced_delivery_event ON delivery_events',
+      );
+      await prisma.$executeRawUnsafe('DROP FUNCTION reject_forced_delivery_event()');
+    }
+
+    await expect(
+      prisma.delivery.findUniqueOrThrow({ where: { id: delivery.id } }),
+    ).resolves.toMatchObject({
+      status: DeliveryStatus.QUEUED,
+    });
+    expect(await prisma.deliveryEvent.count({ where: { deliveryId: delivery.id } })).toBe(1);
   });
 });

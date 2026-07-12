@@ -27,7 +27,7 @@ Tasks are executed top to bottom. The first unchecked box is the current task. D
   - Done when: positive and negative authentication/validation tests pass.
 - [x] **W1D2-2 — Persist-first idempotent ingestion**
   - Done when: new requests return 202 and concurrent replays return 200 with one ID.
-- [ ] **W1D2-3 — Atomic delivery timeline transitions**
+- [x] **W1D2-3 — Atomic delivery timeline transitions**
   - Done when: every state update appends its event transactionally.
 
 ### Day 3 — Routing
