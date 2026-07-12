@@ -21,6 +21,8 @@ import {
   type ListDlqHandler,
   type RetryDlqHandler,
 } from './dlq.js';
+import { InboxMessageNotFoundError, UserNotFoundError, type InboxHandlers } from './inbox.js';
+import { InvalidUserTokenError, verifyUserToken } from './user-token.js';
 
 export {
   createPersistentDlqHandlers,
@@ -30,6 +32,36 @@ export {
   encodeDlqCursor,
 } from './dlq.js';
 export type { DlqListItem, DlqListResult, ListDlqHandler, RetryDlqHandler } from './dlq.js';
+export {
+  createPersistentInboxHandlers,
+  decodeInboxCursor,
+  encodeInboxCursor,
+  InboxMessageNotFoundError,
+  UserNotFoundError,
+} from './inbox.js';
+export type {
+  InboxCursor,
+  InboxHandlers,
+  InboxListResult,
+  InboxMessage,
+  InboxReadAllResult,
+  IssueUserTokenHandler,
+  ListInboxHandler,
+  ReadAllInboxHandler,
+  ReadInboxMessageHandler,
+} from './inbox.js';
+export {
+  InvalidUserTokenError,
+  issueUserToken,
+  USER_TOKEN_LIFETIME_SECONDS,
+  verifyUserToken,
+} from './user-token.js';
+export type {
+  IssuedUserToken,
+  IssueUserTokenOptions,
+  UserTokenClaims,
+  VerifyUserTokenOptions,
+} from './user-token.js';
 
 export const packageIdentity = '@notifyhub/api' as const;
 export const dependencies = [corePackage] as const;
@@ -98,6 +130,7 @@ export interface CreateAppOptions {
   apiKey: string;
   notify: NotifyHandler;
   dlq?: { operatorKey: string; list: ListDlqHandler; retry: RetryDlqHandler };
+  inbox?: InboxHandlers & { tokenSecret: string };
 }
 
 const unauthorized = {
@@ -132,6 +165,23 @@ function authenticate(expectedDigest: Buffer) {
     }
 
     next();
+  };
+}
+
+function authenticateUser(tokenSecret: string) {
+  return (request: Request, response: Response, next: NextFunction): void => {
+    const submitted = request.get('authorization');
+    if (!hasOneAuthorizationHeader(request) || submitted?.startsWith('Bearer ') !== true) {
+      response.status(401).json(unauthorized);
+      return;
+    }
+    try {
+      response.locals.userId = verifyUserToken(submitted.slice('Bearer '.length), tokenSecret).sub;
+      next();
+    } catch (error) {
+      if (!(error instanceof InvalidUserTokenError)) throw error;
+      response.status(401).json(unauthorized);
+    }
   };
 }
 
@@ -192,6 +242,86 @@ export function createApp(options: CreateAppOptions): express.Express {
       response.status(result.replayed ? 200 : 202).json({ notificationId: result.notificationId });
     },
   );
+
+  if (options.inbox !== undefined) {
+    const userAuth = authenticateUser(options.inbox.tokenSecret);
+
+    app.post('/v1/users/:userId/token', authenticate(expectedDigest), async (request, response) => {
+      const parsed = z.string().min(1).max(128).safeParse(request.params.userId);
+      if (!parsed.success) {
+        response
+          .status(422)
+          .json({ error: { code: 'validation_error', message: 'Invalid user ID' } });
+        return;
+      }
+      try {
+        response.json(await options.inbox!.issueToken(parsed.data));
+      } catch (error) {
+        if (error instanceof UserNotFoundError) {
+          response.status(404).json({ error: { code: 'not_found', message: 'User not found' } });
+          return;
+        }
+        throw error;
+      }
+    });
+
+    app.get('/v1/inbox', userAuth, async (request, response) => {
+      const parsed = z
+        .object({
+          limit: z.coerce.number().int().min(1).max(100).default(20),
+          cursor: z.string().min(1).optional(),
+        })
+        .strict()
+        .safeParse(request.query);
+      if (!parsed.success) {
+        response
+          .status(422)
+          .json({ error: { code: 'validation_error', message: 'Invalid inbox query' } });
+        return;
+      }
+      try {
+        response.json(
+          await options.inbox!.list(response.locals.userId as string, {
+            limit: parsed.data.limit,
+            ...(parsed.data.cursor === undefined ? {} : { cursor: parsed.data.cursor }),
+          }),
+        );
+      } catch (error) {
+        if (error instanceof Error && error.message === 'Invalid inbox cursor') {
+          response
+            .status(422)
+            .json({ error: { code: 'validation_error', message: 'Invalid inbox cursor' } });
+          return;
+        }
+        throw error;
+      }
+    });
+
+    app.post('/v1/inbox/read-all', userAuth, async (_request, response) => {
+      response.json(await options.inbox!.readAll(response.locals.userId as string));
+    });
+
+    app.post('/v1/inbox/:id/read', userAuth, async (request, response) => {
+      const parsed = z.string().uuid().safeParse(request.params.id);
+      if (!parsed.success) {
+        response
+          .status(422)
+          .json({ error: { code: 'validation_error', message: 'Invalid inbox message ID' } });
+        return;
+      }
+      try {
+        response.json(await options.inbox!.read(response.locals.userId as string, parsed.data));
+      } catch (error) {
+        if (error instanceof InboxMessageNotFoundError) {
+          response
+            .status(404)
+            .json({ error: { code: 'not_found', message: 'Inbox message not found' } });
+          return;
+        }
+        throw error;
+      }
+    });
+  }
 
   if (options.dlq !== undefined && operatorDigest !== undefined) {
     app.get('/v1/dlq', authenticate(operatorDigest), async (request, response) => {

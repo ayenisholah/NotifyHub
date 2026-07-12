@@ -20,4 +20,5 @@
 - Added persisted-work reconciliation and a scheduled 500-delivery worker-kill reliability gate proving stalled-job recovery, terminal convergence, poison DLQ parking, and the documented SMTP duplicate window.
 - Added race-safe digest batch creation and joining, stable delayed flush jobs, digest-aware routing and replay, template integrity constraints, and digest job reconciliation.
 - Added an idempotent digest flush worker with an authoritative batch-to-delivery link and digest-aware email/SMS rendering.
+- Added short-lived HMAC user tokens and tenant-scoped inbox pagination, unread counts, and idempotent single/all read-state REST endpoints.
 - Established `docs/notifyhub-engineering-doc.md` as the canonical engineering source of truth.
