@@ -74,3 +74,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (`scripts/verify.ps1`; `bash scripts/verify.sh`; format, lint, strict compilation, build, and local Vitest tests passed; `npm audit`; `git diff --check`). Docker-backed router integration remains required by GitHub Actions because no local container runtime is installed.
 - Next: W1D3-2 — Preference precedence.
 - Blockers/notes: preference evaluation, critical overrides, digests, quiet-hours scheduling, and channel consumers remain deferred. Router replays intentionally enqueue stable delivery IDs so BullMQ deduplicates completed fan-out after partial Redis failure. Runtime channel queues use hyphens because BullMQ 5 rejects the specification's conceptual colon-separated labels.
+
+## 2026-07-12 — W1D3-2
+
+- Did: added pure exported preference resolution for exact, longest suffix-wildcard prefix, global, and default-enabled rules; added an exported table-tested routing evaluator covering missing templates, preferences, critical payloads, quiet hours, digests, and immediate delivery; filtered template channels independently inside the router transaction; recorded matched categories in delivery-event details; and made fully disabled notifications stable explained no-ops.
+- Verify: PASS (`scripts/verify.ps1`; `bash scripts/verify.sh`; format, lint, strict compilation, build, and 47 local Vitest tests passed; `npm audit`; `git diff --check`). Docker-backed router integration remains required by GitHub Actions because no local container runtime is installed.
+- Next: W1D3-3 — Quiet-hours scheduling.
+- Blockers/notes: the router deliberately supplies inactive quiet-hours and digest inputs; W1D3-3 and W2D1 activate those branches without changing precedence. Preference strings are interpreted at read time, and routed/no-op results remain immutable across preference changes.

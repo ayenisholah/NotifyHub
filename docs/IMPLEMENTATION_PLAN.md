@@ -34,7 +34,7 @@ Tasks are executed top to bottom. The first unchecked box is the current task. D
 
 - [x] **W1D3-1 — Router and template discovery**
   - Done when: eligible templates create deliveries and missing templates create an explained no-op.
-- [ ] **W1D3-2 — Preference precedence**
+- [x] **W1D3-2 — Preference precedence**
   - Done when: global, event override, quiet-hours, then digest table tests pass.
 - [ ] **W1D3-3 — Quiet-hours scheduling**
   - Done when: normal and midnight-crossing windows schedule correctly in the user timezone.

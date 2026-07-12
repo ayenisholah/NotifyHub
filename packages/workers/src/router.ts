@@ -3,7 +3,9 @@ import { Worker } from 'bullmq';
 import {
   createDelivery,
   createRedisConnection,
+  evaluateRouting,
   NotificationStatus,
+  resolvePreference,
   ROUTE_QUEUE_NAME,
   type Channel,
   type ChannelJobEnqueuer,
@@ -12,6 +14,7 @@ import {
 } from '@notifyhub/core';
 
 export const NO_TEMPLATES_REASON = 'no_templates';
+export const PREFERENCES_DISABLED_REASON = 'preferences_disabled';
 
 export type ProviderMapping = Readonly<Record<Channel, string>>;
 
@@ -51,7 +54,12 @@ export function createRouteNotificationHandler(
       const prepared: PreparedRoute = await prisma.$transaction(async (transaction) => {
         const notification = await transaction.notification.findUnique({
           where: { id: notificationId },
-          include: { deliveries: { orderBy: { channel: 'asc' } } },
+          include: {
+            deliveries: { orderBy: { channel: 'asc' } },
+            user: {
+              select: { preferences: { select: { channel: true, category: true, enabled: true } } },
+            },
+          },
         });
         if (notification === null) throw new NotificationNotFoundError(notificationId);
 
@@ -69,12 +77,42 @@ export function createRouteNotificationHandler(
         const templates = await transaction.template.findMany({
           where: { event: notification.event, locale: 'en' },
           orderBy: { channel: 'asc' },
-          select: { channel: true },
+          select: { channel: true, digestEnabled: true },
         });
         if (templates.length === 0) {
           const updated = await transaction.notification.updateMany({
             where: { id: notificationId, status: NotificationStatus.ACCEPTED },
             data: { status: NotificationStatus.NO_OP, noOpReason: NO_TEMPLATES_REASON },
+          });
+          return updated.count === 1
+            ? { status: NotificationStatus.NO_OP, deliveryIds: [] }
+            : { retry: true };
+        }
+
+        const critical =
+          typeof notification.payload === 'object' &&
+          notification.payload !== null &&
+          !Array.isArray(notification.payload) &&
+          'critical' in notification.payload &&
+          notification.payload.critical === true;
+        const enabledTemplates = templates.flatMap((template) => {
+          const preference = resolvePreference(
+            notification.event,
+            notification.user.preferences.filter(({ channel }) => channel === template.channel),
+          );
+          const decision = evaluateRouting({
+            templatePresent: true,
+            preferenceEnabled: preference.enabled,
+            critical,
+            quietHoursActive: false,
+            digestEnabled: false,
+          });
+          return decision.outcome === 'skip' ? [] : [{ template, preference, decision }];
+        });
+        if (enabledTemplates.length === 0) {
+          const updated = await transaction.notification.updateMany({
+            where: { id: notificationId, status: NotificationStatus.ACCEPTED },
+            data: { status: NotificationStatus.NO_OP, noOpReason: PREFERENCES_DISABLED_REASON },
           });
           return updated.count === 1
             ? { status: NotificationStatus.NO_OP, deliveryIds: [] }
@@ -88,12 +126,16 @@ export function createRouteNotificationHandler(
         if (updated.count !== 1) return { retry: true };
 
         const deliveries = [];
-        for (const template of templates) {
+        for (const { template, preference, decision } of enabledTemplates) {
           const delivery = await createDelivery(transaction, {
             notificationId,
             channel: template.channel,
             provider: providers[template.channel],
-            detail: { reason: 'template_match', locale: 'en' },
+            detail: {
+              reason: decision.reason,
+              locale: 'en',
+              preferenceCategory: preference.matchedCategory,
+            },
           });
           deliveries.push(delivery);
         }

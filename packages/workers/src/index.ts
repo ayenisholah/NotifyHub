@@ -5,6 +5,7 @@ export {
   createRouteWorker,
   NotificationNotFoundError,
   NO_TEMPLATES_REASON,
+  PREFERENCES_DISABLED_REASON,
   RouterConflictError,
 } from './router.js';
 export type {
