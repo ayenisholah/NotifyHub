@@ -130,3 +130,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (format, strict typecheck, standard build/tests, and focused reconciliation tests pass locally; the Docker-backed 500-delivery SIGKILL gate is isolated under `npm run test:kill` for Linux GitHub Actions where a container runtime is available).
 - Next: W2D1-1 — Race-safe digest batches.
 - Blockers/notes: SMTP can duplicate across the provider-send/database-commit boundary; the acceptance gate proves and bounds that window rather than claiming exactly once. Production scheduling of reconciliation remains part of later operations work.
+
+## 2026-07-12 — W2D1-1
+
+- Did: added a database constraint requiring digest bodies for enabled templates; exported a stable five-attempt delayed digest-flush queue; implemented atomic PostgreSQL open-batch upsert and idempotent membership; activated email/SMS digest routing while preserving preference, critical, quiet-hours, and in-app precedence; made pure-digest and mixed routed replays stable; and extended reconciliation to restore missing open-batch jobs.
+- Verify: PASS (Prisma generation, format, strict typecheck, build, and 98 local Vitest tests passed; PostgreSQL/Redis coverage includes 20-way batch contention, mixed immediate/digest routing, template constraint enforcement, stable delayed jobs, and reconciliation; container-backed execution remains delegated to GitHub Actions).
+- Next: W2D1-2 — Digest flush worker.
+- Blockers/notes: an open batch remains joinable until the flush worker claims it, so scheduler lag may slightly extend the collection window. Rendering, batch claim, delivery creation, and channel dispatch remain W2D1-2.

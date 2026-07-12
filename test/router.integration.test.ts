@@ -83,6 +83,118 @@ async function waitFor<T>(read: () => Promise<T | null>): Promise<T> {
 }
 
 describe.sequential('template-based notification router', () => {
+  it('creates one race-safe digest batch under concurrent notification routing', async () => {
+    const user = await prisma.user.create({
+      data: { id: 'router-digest-race', email: 'digest-race@example.test' },
+    });
+    await prisma.template.create({
+      data: {
+        event: 'comment.created',
+        channel: Channel.EMAIL,
+        body: 'Immediate',
+        digestBody: '{{count}} comments',
+        digestEnabled: true,
+        digestWindowMinutes: 7,
+      },
+    });
+    const notifications = await Promise.all(
+      Array.from({ length: 20 }, (_, index) =>
+        prisma.notification.create({
+          data: { userId: user.id, event: 'comment.created', payload: { index } },
+        }),
+      ),
+    );
+    const enqueueDigest = vi.fn(async () => undefined);
+    const routedAt = new Date('2026-07-12T12:00:00.000Z');
+    const route = createRouteNotificationHandler(
+      prisma,
+      { enqueue: async () => undefined },
+      providers,
+      () => routedAt,
+      { enqueue: enqueueDigest },
+    );
+
+    const results = await Promise.all(notifications.map(({ id }) => route(id)));
+
+    expect(results).toEqual(
+      Array.from({ length: 20 }, () => ({
+        status: NotificationStatus.ROUTED,
+        deliveryIds: [],
+      })),
+    );
+    const batches = await prisma.digestBatch.findMany({ include: { items: true } });
+    expect(batches).toHaveLength(1);
+    expect(batches[0]).toMatchObject({
+      userId: user.id,
+      event: 'comment.created',
+      channel: Channel.EMAIL,
+      windowEndsAt: new Date('2026-07-12T12:07:00.000Z'),
+    });
+    expect(new Set(batches[0]!.items.map(({ notificationId }) => notificationId))).toEqual(
+      new Set(notifications.map(({ id }) => id)),
+    );
+    expect(await prisma.delivery.count()).toBe(0);
+    expect(new Set(enqueueDigest.mock.calls.map(([batchId]) => batchId))).toEqual(
+      new Set([batches[0]!.id]),
+    );
+  });
+
+  it('mixes digest email with immediate in-app and keeps routed replay stable', async () => {
+    const notification = await createNotification('digest-mixed', 'comment.mixed');
+    await prisma.template.createMany({
+      data: [
+        {
+          event: notification.event,
+          channel: Channel.EMAIL,
+          body: 'Email',
+          digestBody: 'Digest',
+          digestEnabled: true,
+        },
+        {
+          event: notification.event,
+          channel: Channel.IN_APP,
+          body: 'Inbox',
+          digestBody: 'Ignored',
+          digestEnabled: true,
+        },
+      ],
+    });
+    const enqueue = vi.fn(async () => undefined);
+    const enqueueDigest = vi.fn(async () => undefined);
+    const route = createRouteNotificationHandler(
+      prisma,
+      { enqueue },
+      providers,
+      () => new Date('2026-07-12T12:00:00.000Z'),
+      { enqueue: enqueueDigest },
+    );
+
+    const first = await route(notification.id);
+    const replay = await route(notification.id);
+
+    expect(first).toEqual(replay);
+    expect(first.deliveryIds).toHaveLength(1);
+    await expect(
+      prisma.delivery.findUniqueOrThrow({ where: { id: first.deliveryIds[0]! } }),
+    ).resolves.toMatchObject({ channel: Channel.IN_APP });
+    expect(await prisma.digestItem.count({ where: { notificationId: notification.id } })).toBe(1);
+    expect(enqueue).toHaveBeenCalledTimes(2);
+    expect(enqueueDigest).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects digest-enabled templates without a digest body', async () => {
+    await expect(
+      prisma.template.create({
+        data: {
+          event: 'invalid.digest',
+          channel: Channel.EMAIL,
+          body: 'Body',
+          digestEnabled: true,
+        },
+      }),
+    ).rejects.toThrow();
+  });
+
   it('creates deliveries only for matching English templates and enqueues after commit', async () => {
     const notification = await createNotification('templates');
     await prisma.template.createMany({

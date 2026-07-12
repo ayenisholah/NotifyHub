@@ -231,7 +231,12 @@ describe.sequential('worker kill reliability gate', () => {
         { routeJobs, channelJobs, dlq },
         new Date(Date.now() + 1),
       );
-      expect(firstSweep).toEqual({ notifications: 0, deliveries: 0, deadLetters: 1 });
+      expect(firstSweep).toEqual({
+        notifications: 0,
+        deliveries: 0,
+        deadLetters: 1,
+        digestBatches: 0,
+      });
       expect(secondSweep).toEqual(firstSweep);
       expect(await prisma.deliveryEvent.count()).toBe(eventCount);
     } finally {
