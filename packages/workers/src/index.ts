@@ -14,6 +14,30 @@ export type {
   RouteNotificationResult,
   RouteWorker,
 } from './router.js';
+export {
+  createInAppDeliveryHandler,
+  createInboxPublisher,
+  createInAppWorker,
+  INBOX_MESSAGE_CREATED,
+  INBOX_PUBSUB_CHANNEL,
+  InAppDeliveryError,
+  InAppDeliveryNotFoundError,
+  InAppTemplateNotFoundError,
+  renderInAppTemplate,
+  toInboxMessageCreatedEvent,
+} from './in-app.js';
+export type {
+  CloseableInboxPublisher,
+  HandleInAppDeliveryOptions,
+  InboxEventMessage,
+  InboxMessageCreatedEvent,
+  InboxPublisher,
+  InAppDeliveryHandler,
+  InAppWorker,
+  RenderedInAppTemplate,
+  RenderInAppTemplateInput,
+  TemplateWarning,
+} from './in-app.js';
 
 export const packageIdentity = '@notifyhub/workers' as const;
 export const dependencies = [corePackage] as const;

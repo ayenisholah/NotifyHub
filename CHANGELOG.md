@@ -12,4 +12,5 @@
 - Added restart-safe English-template routing, explained no-op notifications, stable per-channel BullMQ jobs, and a real route worker.
 - Added exact, longest-prefix, and global preference resolution with a pure routing-precedence evaluator, per-channel filtering, diagnostic delivery events, and stable fully-disabled no-ops.
 - Added timezone-aware same-day and overnight quiet hours with scheduled delivery timelines and stable delayed BullMQ channel jobs, while critical and in-app notifications remain immediate.
+- Added restart-safe in-app delivery processing with Handlebars rendering, atomic inbox/timeline persistence, and typed at-least-once Redis publication.
 - Established `docs/notifyhub-engineering-doc.md` as the canonical engineering source of truth.
