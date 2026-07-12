@@ -21,8 +21,13 @@ export {
   DeliveryTransitionConflictError,
   InvalidDeliveryStateError,
   transitionDelivery,
+  transitionDeliveryInTransaction,
 } from './delivery-lifecycle.js';
-export type { CreateDeliveryInput, TransitionDeliveryInput } from './delivery-lifecycle.js';
+export type {
+  CreateDeliveryInput,
+  DeliveryTransitionClient,
+  TransitionDeliveryInput,
+} from './delivery-lifecycle.js';
 export {
   createRedisConnection,
   createRouteQueueProducer,

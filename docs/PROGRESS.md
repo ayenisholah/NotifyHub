@@ -88,3 +88,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (`scripts/verify.ps1`; `bash scripts/verify.sh`; format, lint, strict compilation, build, and 61 local Vitest tests passed; `npm audit`; `git diff --check`). Docker-backed PostgreSQL/Redis quiet-hours and delayed-job integration remains required by GitHub Actions because no local container runtime is installed.
 - Next: W1D4-1 — Restart-safe in-app worker.
 - Blockers/notes: digest evaluation remains inactive until W2D1. Scheduled channel workers may receive a past-due job immediately after queue recovery; they must continue to treat PostgreSQL as source of truth.
+
+## 2026-07-12 — W1D4-1
+
+- Did: corrected quiet-hours integration assertions to be independent of PostgreSQL enum ordering; added plain-text Handlebars in-app rendering with event-title fallback and missing-variable diagnostics; exposed transaction-scoped lifecycle transitions; atomically persisted inbox rows with processing/sent events; added idempotent sent/processing replay; published typed inbox envelopes after commit through a real Redis publisher; and added a BullMQ in-app worker with unit and PostgreSQL/Redis coverage.
+- Verify: PASS (`scripts/verify.ps1`; `bash scripts/verify.sh`; format, lint, strict compilation, build, and 64 local Vitest tests passed; `npm audit`; `git diff --check`). Docker-backed in-app integration remains required by GitHub Actions because no local container runtime is installed.
+- Next: W1D4-2 — Email interface and Mailpit worker.
+- Blockers/notes: inbox persistence is exactly once by notification; Redis publication is at least once and later consumers must deduplicate by inbox message ID. Retry/DLQ classification remains W1D5, and the WebSocket gateway remains W2D2-2.

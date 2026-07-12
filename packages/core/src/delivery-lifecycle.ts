@@ -14,6 +14,7 @@ interface DeliveryCreationBase {
 }
 
 type DeliveryCreationClient = Pick<PrismaClient, 'delivery'>;
+export type DeliveryTransitionClient = Pick<Prisma.TransactionClient, 'delivery' | 'deliveryEvent'>;
 
 export type CreateDeliveryInput = DeliveryCreationBase &
   (
@@ -127,36 +128,42 @@ export async function transitionDelivery(
 ): Promise<Delivery> {
   validateTransition(input);
 
-  return prisma.$transaction(async (transaction) => {
-    const current = await transaction.delivery.findUnique({ where: { id: input.deliveryId } });
-    if (current === null) throw new DeliveryNotFoundError(input.deliveryId);
-    if (input.attempts !== undefined && input.attempts < current.attempts) {
-      throw new InvalidDeliveryStateError('attempts cannot decrease');
-    }
+  return prisma.$transaction((transaction) => transitionDeliveryInTransaction(transaction, input));
+}
 
-    const updated = await transaction.delivery.updateMany({
-      where: { id: input.deliveryId, status: input.expectedStatus },
-      data: {
-        status: input.status,
-        ...(input.attempts === undefined ? {} : { attempts: input.attempts }),
-        ...(input.lastError === undefined ? {} : { lastError: input.lastError }),
-        ...(input.providerMessageId === undefined
-          ? {}
-          : { providerMessageId: input.providerMessageId }),
-      },
-    });
-    if (updated.count !== 1) {
-      throw new DeliveryTransitionConflictError(input.deliveryId, input.expectedStatus);
-    }
+export async function transitionDeliveryInTransaction(
+  prisma: DeliveryTransitionClient,
+  input: TransitionDeliveryInput,
+): Promise<Delivery> {
+  validateTransition(input);
+  const current = await prisma.delivery.findUnique({ where: { id: input.deliveryId } });
+  if (current === null) throw new DeliveryNotFoundError(input.deliveryId);
+  if (input.attempts !== undefined && input.attempts < current.attempts) {
+    throw new InvalidDeliveryStateError('attempts cannot decrease');
+  }
 
-    await transaction.deliveryEvent.create({
-      data: {
-        deliveryId: input.deliveryId,
-        status: input.status,
-        ...(input.detail === undefined ? {} : { detail: input.detail }),
-      },
-    });
-
-    return transaction.delivery.findUniqueOrThrow({ where: { id: input.deliveryId } });
+  const updated = await prisma.delivery.updateMany({
+    where: { id: input.deliveryId, status: input.expectedStatus },
+    data: {
+      status: input.status,
+      ...(input.attempts === undefined ? {} : { attempts: input.attempts }),
+      ...(input.lastError === undefined ? {} : { lastError: input.lastError }),
+      ...(input.providerMessageId === undefined
+        ? {}
+        : { providerMessageId: input.providerMessageId }),
+    },
   });
+  if (updated.count !== 1) {
+    throw new DeliveryTransitionConflictError(input.deliveryId, input.expectedStatus);
+  }
+
+  await prisma.deliveryEvent.create({
+    data: {
+      deliveryId: input.deliveryId,
+      status: input.status,
+      ...(input.detail === undefined ? {} : { detail: input.detail }),
+    },
+  });
+
+  return prisma.delivery.findUniqueOrThrow({ where: { id: input.deliveryId } });
 }
