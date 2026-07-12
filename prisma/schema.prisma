@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../packages/core/src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Channel {
+  EMAIL
+  SMS
+  IN_APP
+}
+
+enum NotificationStatus {
+  ACCEPTED
+  ROUTED
+  NO_OP
+}
+
+enum DeliveryStatus {
+  QUEUED
+  PROCESSING
+  SENT
+  RETRYING
+  FAILED
+  DLQ
+  SCHEDULED
+}
+
+enum DigestBatchStatus {
+  OPEN
+  FLUSHED
+}
+
+model User {
+  id            String         @id
+  email         String         @unique
+  phone         String?
+  timezone      String         @default("UTC")
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  preferences   Preference[]
+  quietHours    QuietHours?
+  notifications Notification[]
+  digestBatches DigestBatch[]
+  inboxMessages InboxMessage[]
+
+  @@map("users")
+}
+
+model Preference {
+  userId   String  @map("user_id")
+  channel  Channel
+  category String
+  enabled  Boolean @default(true)
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, channel, category])
+  @@map("preferences")
+}
+
+model QuietHours {
+  userId      String @id @map("user_id")
+  startMinute Int    @map("start_minute")
+  endMinute   Int    @map("end_minute")
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("quiet_hours")
+}
+
+model Template {
+  id                  String   @id @default(uuid()) @db.Uuid
+  event               String
+  channel             Channel
+  locale              String   @default("en")
+  subject             String?
+  body                String
+  bodyHtml             String?  @map("body_html")
+  digestBody           String?  @map("digest_body")
+  digestEnabled        Boolean  @default(false) @map("digest_enabled")
+  digestWindowMinutes Int      @default(10) @map("digest_window_minutes")
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([event, channel, locale])
+  @@map("templates")
+}
+
+model Notification {
+  id             String             @id @default(uuid()) @db.Uuid
+  userId         String             @map("user_id")
+  event          String
+  payload        Json               @db.JsonB
+  idempotencyKey String?            @unique @map("idempotency_key")
+  status         NotificationStatus @default(ACCEPTED)
+  noOpReason     String?            @map("no_op_reason")
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  user           User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  deliveries     Delivery[]
+  digestItems    DigestItem[]
+  inboxMessage   InboxMessage?
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+model Delivery {
+  id                String          @id @default(uuid()) @db.Uuid
+  notificationId    String          @map("notification_id") @db.Uuid
+  channel           Channel
+  provider          String
+  status            DeliveryStatus  @default(QUEUED)
+  attempts          Int             @default(0)
+  lastError         String?         @map("last_error")
+  providerMessageId String?         @map("provider_message_id")
+  scheduledFor      DateTime?       @map("scheduled_for") @db.Timestamptz(3)
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+  notification      Notification    @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  events            DeliveryEvent[]
+
+  @@index([notificationId])
+  @@index([status, scheduledFor])
+  @@map("deliveries")
+}
+
+model DeliveryEvent {
+  id         BigInt         @id @default(autoincrement())
+  deliveryId String         @map("delivery_id") @db.Uuid
+  status     DeliveryStatus
+  detail     Json?          @db.JsonB
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  delivery   Delivery       @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@index([deliveryId, createdAt])
+  @@map("delivery_events")
+}
+
+model DigestBatch {
+  id           String            @id @default(uuid()) @db.Uuid
+  userId       String            @map("user_id")
+  event        String
+  channel      Channel
+  windowEndsAt DateTime          @map("window_ends_at") @db.Timestamptz(3)
+  status       DigestBatchStatus @default(OPEN)
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items        DigestItem[]
+
+  @@index([status, windowEndsAt])
+  @@map("digest_batches")
+}
+
+model DigestItem {
+  batchId        String       @map("batch_id") @db.Uuid
+  notificationId String       @map("notification_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  batch          DigestBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@id([batchId, notificationId])
+  @@index([notificationId])
+  @@map("digest_items")
+}
+
+model InboxMessage {
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String       @map("user_id")
+  notificationId String       @unique @map("notification_id") @db.Uuid
+  title          String
+  body           String
+  readAt         DateTime?    @map("read_at") @db.Timestamptz(3)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("inbox_messages")
+}
