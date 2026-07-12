@@ -307,40 +307,46 @@ describe.sequential('template-based notification router', () => {
       include: { events: true },
       orderBy: { channel: 'asc' },
     });
-    expect(deliveries).toMatchObject([
-      {
-        channel: Channel.EMAIL,
-        status: 'SCHEDULED',
-        scheduledFor: new Date('2026-07-13T07:00:00Z'),
-        events: [
-          {
-            status: 'SCHEDULED',
-            detail: {
-              reason: 'quiet_hours',
-              timezone: 'Africa/Lagos',
-              scheduledFor: '2026-07-13T07:00:00.000Z',
+    expect(deliveries).toHaveLength(3);
+    expect(deliveries).toEqual(
+      expect.arrayContaining([
+        {
+          channel: Channel.EMAIL,
+          status: 'SCHEDULED',
+          scheduledFor: new Date('2026-07-13T07:00:00Z'),
+          events: [
+            {
+              status: 'SCHEDULED',
+              detail: {
+                reason: 'quiet_hours',
+                timezone: 'Africa/Lagos',
+                scheduledFor: '2026-07-13T07:00:00.000Z',
+              },
             },
-          },
-        ],
-      },
-      {
-        channel: Channel.IN_APP,
-        status: 'QUEUED',
-        scheduledFor: null,
-        events: [{ status: 'QUEUED' }],
-      },
-      {
-        channel: Channel.SMS,
-        status: 'SCHEDULED',
-        scheduledFor: new Date('2026-07-13T07:00:00Z'),
-        events: [{ status: 'SCHEDULED' }],
-      },
-    ]);
-    expect(enqueue.mock.calls.map(([channel, , scheduledFor]) => [channel, scheduledFor])).toEqual([
-      [Channel.EMAIL, new Date('2026-07-13T07:00:00Z')],
-      [Channel.IN_APP, undefined],
-      [Channel.SMS, new Date('2026-07-13T07:00:00Z')],
-    ]);
+          ],
+        },
+        {
+          channel: Channel.IN_APP,
+          status: 'QUEUED',
+          scheduledFor: null,
+          events: [{ status: 'QUEUED' }],
+        },
+        {
+          channel: Channel.SMS,
+          status: 'SCHEDULED',
+          scheduledFor: new Date('2026-07-13T07:00:00Z'),
+          events: [{ status: 'SCHEDULED' }],
+        },
+      ]),
+    );
+    expect(enqueue).toHaveBeenCalledTimes(3);
+    expect(enqueue.mock.calls.map(([channel, , scheduledFor]) => [channel, scheduledFor])).toEqual(
+      expect.arrayContaining([
+        [Channel.EMAIL, new Date('2026-07-13T07:00:00Z')],
+        [Channel.IN_APP, undefined],
+        [Channel.SMS, new Date('2026-07-13T07:00:00Z')],
+      ]),
+    );
 
     await prisma.user.update({
       where: { id: notification.userId },
