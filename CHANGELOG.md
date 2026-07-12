@@ -11,4 +11,5 @@
 - Added atomic delivery creation and compare-and-set lifecycle transitions with append-only timeline events and typed conflict errors.
 - Added restart-safe English-template routing, explained no-op notifications, stable per-channel BullMQ jobs, and a real route worker.
 - Added exact, longest-prefix, and global preference resolution with a pure routing-precedence evaluator, per-channel filtering, diagnostic delivery events, and stable fully-disabled no-ops.
+- Added timezone-aware same-day and overnight quiet hours with scheduled delivery timelines and stable delayed BullMQ channel jobs, while critical and in-app notifications remain immediate.
 - Established `docs/notifyhub-engineering-doc.md` as the canonical engineering source of truth.

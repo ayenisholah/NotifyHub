@@ -30,6 +30,8 @@ export {
   ROUTE_QUEUE_NAME,
 } from './route-queue.js';
 export type { RouteJobData, RouteQueueProducer } from './route-queue.js';
+export { InvalidQuietHoursError, resolveQuietHours } from './quiet-hours.js';
+export type { QuietHoursInput, QuietHoursResult } from './quiet-hours.js';
 export { evaluateRouting, resolvePreference, ROUTING_REASONS } from './routing-precedence.js';
 export type {
   PreferenceResolution,

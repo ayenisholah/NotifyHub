@@ -277,6 +277,116 @@ describe.sequential('template-based notification router', () => {
     ).toEqual([{ channel: Channel.EMAIL }]);
   });
 
+  it('schedules interruptive channels during quiet hours while in-app remains immediate', async () => {
+    const notification = await createNotification('quiet', 'comment.created');
+    await prisma.user.update({
+      where: { id: notification.userId },
+      data: {
+        timezone: 'Africa/Lagos',
+        quietHours: { create: { startMinute: 22 * 60, endMinute: 8 * 60 } },
+      },
+    });
+    await prisma.template.createMany({
+      data: Object.values(Channel).map((channel) => ({
+        event: notification.event,
+        channel,
+        body: channel,
+      })),
+    });
+    const enqueue = vi.fn(async () => undefined);
+    const route = createRouteNotificationHandler(
+      prisma,
+      { enqueue },
+      providers,
+      () => new Date('2026-07-12T22:30:00Z'),
+    );
+
+    const first = await route(notification.id);
+    const deliveries = await prisma.delivery.findMany({
+      where: { notificationId: notification.id },
+      include: { events: true },
+      orderBy: { channel: 'asc' },
+    });
+    expect(deliveries).toMatchObject([
+      {
+        channel: Channel.EMAIL,
+        status: 'SCHEDULED',
+        scheduledFor: new Date('2026-07-13T07:00:00Z'),
+        events: [
+          {
+            status: 'SCHEDULED',
+            detail: {
+              reason: 'quiet_hours',
+              timezone: 'Africa/Lagos',
+              scheduledFor: '2026-07-13T07:00:00.000Z',
+            },
+          },
+        ],
+      },
+      {
+        channel: Channel.IN_APP,
+        status: 'QUEUED',
+        scheduledFor: null,
+        events: [{ status: 'QUEUED' }],
+      },
+      {
+        channel: Channel.SMS,
+        status: 'SCHEDULED',
+        scheduledFor: new Date('2026-07-13T07:00:00Z'),
+        events: [{ status: 'SCHEDULED' }],
+      },
+    ]);
+    expect(enqueue.mock.calls.map(([channel, , scheduledFor]) => [channel, scheduledFor])).toEqual([
+      [Channel.EMAIL, new Date('2026-07-13T07:00:00Z')],
+      [Channel.IN_APP, undefined],
+      [Channel.SMS, new Date('2026-07-13T07:00:00Z')],
+    ]);
+
+    await prisma.user.update({
+      where: { id: notification.userId },
+      data: { timezone: 'UTC', quietHours: { delete: true } },
+    });
+    expect(await route(notification.id)).toEqual(first);
+    expect(
+      await prisma.deliveryEvent.count({
+        where: { delivery: { notificationId: notification.id } },
+      }),
+    ).toBe(3);
+  });
+
+  it('lets critical interruptive deliveries bypass quiet hours', async () => {
+    const notification = await createNotification('critical-quiet', 'security.alert', {
+      critical: true,
+    });
+    await prisma.user.update({
+      where: { id: notification.userId },
+      data: {
+        timezone: 'Invalid/Timezone',
+        quietHours: { create: { startMinute: 0, endMinute: 8 * 60 } },
+      },
+    });
+    await prisma.template.create({
+      data: { event: notification.event, channel: Channel.EMAIL, body: 'Email' },
+    });
+    await createRouteNotificationHandler(
+      prisma,
+      { enqueue: async () => undefined },
+      providers,
+      () => new Date('2026-07-12T03:00:00Z'),
+    )(notification.id);
+
+    await expect(
+      prisma.delivery.findFirstOrThrow({
+        where: { notificationId: notification.id },
+        include: { events: true },
+      }),
+    ).resolves.toMatchObject({
+      status: 'QUEUED',
+      scheduledFor: null,
+      events: [{ detail: { reason: 'critical' } }],
+    });
+  });
+
   it('routes repeated and concurrent executions without duplicate deliveries or events', async () => {
     const notification = await createNotification('concurrent');
     await prisma.template.create({
