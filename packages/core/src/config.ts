@@ -32,6 +32,12 @@ const environmentSchema = z.object({
   MAILPIT_PORT: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
   SENDGRID_API_KEY: z.string().optional(),
+  SMS_PROVIDER: z.enum(['mock']),
+  MOCK_SMS_FAILURE_RATE: z.coerce
+    .number('must be numeric')
+    .min(0, 'must be between 0 and 1')
+    .max(1, 'must be between 0 and 1')
+    .default(0),
 });
 
 export type EmailProviderName = 'mailpit' | 'resend' | 'sendgrid';
@@ -39,6 +45,8 @@ export type EmailConfig =
   | Readonly<{ provider: 'mailpit'; from: string; host: string; port: number }>
   | Readonly<{ provider: 'resend'; from: string; apiKey: string }>
   | Readonly<{ provider: 'sendgrid'; from: string; apiKey: string }>;
+export type SmsProviderName = 'mock';
+export type SmsConfig = Readonly<{ provider: 'mock'; failureRate: number }>;
 
 export type AppConfig = Readonly<{
   databaseUrl: string;
@@ -50,6 +58,7 @@ export type AppConfig = Readonly<{
   port: number;
   logLevel: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal' | 'silent';
   email: EmailConfig;
+  sms: SmsConfig;
 }>;
 
 export class ConfigurationError extends Error {
@@ -80,6 +89,10 @@ export function parseConfig(env: Readonly<Record<string, string | undefined>>): 
     port: result.data.PORT,
     logLevel: result.data.LOG_LEVEL,
     email: Object.freeze(email),
+    sms: Object.freeze({
+      provider: result.data.SMS_PROVIDER,
+      failureRate: result.data.MOCK_SMS_FAILURE_RATE,
+    }),
   });
 }
 

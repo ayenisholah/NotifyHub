@@ -1,5 +1,11 @@
 export { ConfigurationError, loadConfig, parseConfig } from './config.js';
-export type { AppConfig, EmailConfig, EmailProviderName } from './config.js';
+export type {
+  AppConfig,
+  EmailConfig,
+  EmailProviderName,
+  SmsConfig,
+  SmsProviderName,
+} from './config.js';
 export {
   Channel,
   createPrismaClient,

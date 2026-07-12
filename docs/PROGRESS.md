@@ -102,3 +102,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (format, lint, strict typecheck, build, and 72 local Vitest tests passed; `npm audit` reported 0 vulnerabilities; integration tests were collected locally and remain required in GitHub Actions because no container runtime is installed).
 - Next: W1D4-3 — Deterministic mock-SMS worker.
 - Blockers/notes: Resend has provider-level idempotency. SMTP and SendGrid retain a duplicate window if the process dies after provider acceptance but before the SENT transition. Retry classification, attempt limits, backoff, and DLQ policy remain W1D5.
+
+## 2026-07-12 — W1D4-3
+
+- Did: added required mock-SMS provider configuration with a validated failure rate; exported SMS provider/message/result contracts; implemented stable FNV-based failure decisions per delivery attempt, deterministic fake message IDs, injectable outcomes, and safe metadata-only logging; added shared plain-text SMS template rendering; and added an idempotent BullMQ SMS handler with typed delivery, provider, recipient, and template errors. Corrected the email integration fixture to reuse its unique English template within a multi-fixture test.
+- Verify: PASS (format, strict typecheck, build, and 79 local Vitest tests passed; PostgreSQL/Redis integration coverage was added and collected but requires the GitHub Actions container runtime).
+- Next: W1D5-1 — Five-attempt retry classification.
+- Blockers/notes: simulated outcomes are stable for each delivery ID and persisted attempt, so W1D5 can test transient and permanent failures without process-order randomness. Retry transitions, backoff, jitter, terminal failure, and DLQ policy remain deferred to W1D5.

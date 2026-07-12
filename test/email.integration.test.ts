@@ -64,14 +64,18 @@ async function fixture(label: string, provider = 'mailpit') {
   const notification = await prisma.notification.create({
     data: { userId: user.id, event: 'comment.created', payload: { text: '<hello>' } },
   });
-  await prisma.template.create({
-    data: {
+  await prisma.template.upsert({
+    where: {
+      event_channel_locale: { event: notification.event, channel: Channel.EMAIL, locale: 'en' },
+    },
+    create: {
       event: notification.event,
       channel: Channel.EMAIL,
       subject: 'For {{user.email}}',
       body: '{{payload.text}}',
       bodyHtml: '<p>{{payload.text}}</p>',
     },
+    update: {},
   });
   return createDelivery(prisma, {
     notificationId: notification.id,
