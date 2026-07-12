@@ -32,3 +32,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (`npm ci`; `scripts/verify.ps1`; `bash scripts/verify.sh`; format check, lint, strict compilation, clean workspace build, and 1 Vitest test all passed; npm audit reported 0 vulnerabilities).
 - Next: W1D1-2 — Validated configuration.
 - Blockers/notes: runtime dependencies and application behavior remain intentionally absent. Add Zod and environment parsing only in W1D1-2.
+
+## 2026-07-12 — W1D1-2
+
+- Did: added Zod as a core runtime dependency; exported immutable typed environment parsing and process-environment loading; validated PostgreSQL, Redis, secrets, environment, port, and Pino-compatible log levels; added redacted aggregate configuration errors, safe local examples, and focused tests without wiring API or worker startup.
+- Verify: PASS (`npm ci`; `scripts/verify.ps1`; `bash scripts/verify.sh`; format check, lint, strict compilation, build, and 9 Vitest tests all passed; npm audit reported 0 vulnerabilities; `git diff --check`).
+- Next: W1D1-3 — Prisma schema and migration.
+- Blockers/notes: secrets remain required in every environment. No dotenv, database client, Redis connection, provider variables, or service boot process was added.
