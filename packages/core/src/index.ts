@@ -41,6 +41,14 @@ export {
   ROUTE_QUEUE_NAME,
 } from './route-queue.js';
 export type { RouteJobData, RouteQueueProducer } from './route-queue.js';
+export {
+  calculateDeliveryBackoff,
+  createDeliveryBackoffStrategy,
+  DELIVERY_BACKOFF_BASE_MS,
+  DELIVERY_BACKOFF_TYPE,
+  DELIVERY_MAX_ATTEMPTS,
+  DELIVERY_RETRY_JOB_OPTIONS,
+} from './retry-policy.js';
 export { InvalidQuietHoursError, resolveQuietHours } from './quiet-hours.js';
 export type { QuietHoursInput, QuietHoursResult } from './quiet-hours.js';
 export { evaluateRouting, resolvePreference, ROUTING_REASONS } from './routing-precedence.js';

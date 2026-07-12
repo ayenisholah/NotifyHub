@@ -5,6 +5,7 @@ import {
   createResendEmailProvider,
   createSendGridEmailProvider,
   renderEmailTemplate,
+  ProviderDeliveryError,
 } from '../packages/workers/src/index.js';
 
 const message = {
@@ -114,6 +115,48 @@ describe('email provider adapters', () => {
         expect((error as Error).message).not.toContain(apiKey);
         expect((error as Error).message).not.toContain('secret provider body');
       }
+    }
+  });
+
+  it.each([
+    [400, false],
+    [408, true],
+    [425, true],
+    [429, true],
+    [500, true],
+  ])('classifies HTTP %i retryability as %s', async (status, retryable) => {
+    const provider = createResendEmailProvider(
+      { provider: 'resend', from: 'from@example.test', apiKey: 'private-key' },
+      { fetch: async () => new Response(null, { status }) },
+    );
+    try {
+      await provider.send(message);
+      throw new Error('Expected provider failure');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ProviderDeliveryError);
+      expect(error).toMatchObject({ retryable, status });
+    }
+  });
+
+  it.each([
+    [421, true],
+    [550, false],
+  ])('classifies SMTP %i retryability as %s', async (responseCode, retryable) => {
+    const provider = createMailpitEmailProvider(
+      { provider: 'mailpit', from: 'from@example.test', host: 'mailpit', port: 1025 },
+      {
+        sendMail: async () => {
+          throw Object.assign(new Error('private SMTP response'), { responseCode });
+        },
+      } as never,
+    );
+    try {
+      await provider.send(message);
+      throw new Error('Expected provider failure');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ProviderDeliveryError);
+      expect(error).toMatchObject({ retryable, status: responseCode });
+      expect((error as Error).message).not.toContain('private SMTP response');
     }
   });
 });

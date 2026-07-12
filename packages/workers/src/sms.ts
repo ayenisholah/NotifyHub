@@ -4,6 +4,7 @@ import {
   Channel,
   CHANNEL_QUEUE_NAMES,
   createRedisConnection,
+  createDeliveryBackoffStrategy,
   DeliveryStatus,
   DeliveryTransitionConflictError,
   transitionDelivery,
@@ -12,6 +13,8 @@ import {
 } from '@notifyhub/core';
 
 import type { SmsProvider, SmsSendResult } from './sms-provider.js';
+import { ClassifiedDeliveryError } from './execution-error.js';
+import { runClassifiedDelivery } from './retry.js';
 import { renderTemplateField, type TemplateWarning } from './template-renderer.js';
 
 export type SmsTemplateWarning = TemplateWarning<'text'>;
@@ -25,9 +28,9 @@ export function renderSmsTemplate(input: RenderSmsTemplateInput): string {
   return renderTemplateField(input.body, 'text', input.context, false, input.onWarning);
 }
 
-export class SmsDeliveryError extends Error {
+export class SmsDeliveryError extends ClassifiedDeliveryError {
   public constructor(message: string) {
-    super(message);
+    super(message, false);
     this.name = 'SmsDeliveryError';
   }
 }
@@ -59,7 +62,9 @@ export class SmsTemplateNotFoundError extends SmsDeliveryError {
 export interface HandleSmsDeliveryOptions {
   onTemplateWarning?: (warning: SmsTemplateWarning) => void;
 }
-export type SmsDeliveryHandler = (deliveryId: string) => Promise<SmsSendResult>;
+export type SmsDeliveryHandler = ((deliveryId: string) => Promise<SmsSendResult>) & {
+  readonly prisma: PrismaClient;
+};
 const active = new Map<string, Promise<SmsSendResult>>();
 
 export function createSmsDeliveryHandler(
@@ -152,13 +157,14 @@ export function createSmsDeliveryHandler(
     return result;
   };
 
-  return (deliveryId) => {
+  const handler = (deliveryId: string) => {
     const existing = active.get(deliveryId);
     if (existing !== undefined) return existing;
     const promise = execute(deliveryId).finally(() => active.delete(deliveryId));
     active.set(deliveryId, promise);
     return promise;
   };
+  return Object.assign(handler, { prisma });
 }
 
 export interface SmsWorker {
@@ -167,8 +173,14 @@ export interface SmsWorker {
 export function createSmsWorker(redisUrl: string, handler: SmsDeliveryHandler): SmsWorker {
   const worker = new Worker<ChannelJobData>(
     CHANNEL_QUEUE_NAMES[Channel.SMS],
-    async (job) => handler(job.data.deliveryId),
-    { connection: createRedisConnection(redisUrl) },
+    async (job) =>
+      runClassifiedDelivery(handler.prisma, job.data.deliveryId, async () =>
+        handler(job.data.deliveryId),
+      ),
+    {
+      connection: createRedisConnection(redisUrl),
+      settings: { backoffStrategy: createDeliveryBackoffStrategy() },
+    },
   );
   worker.on('error', () => undefined);
   return { close: async () => worker.close() };

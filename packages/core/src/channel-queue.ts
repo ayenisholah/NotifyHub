@@ -2,6 +2,7 @@ import { Queue } from 'bullmq';
 
 import { Channel } from './generated/prisma/client.js';
 import { createRedisConnection } from './route-queue.js';
+import { DELIVERY_RETRY_JOB_OPTIONS } from './retry-policy.js';
 
 export const CHANNEL_QUEUE_NAMES = {
   [Channel.EMAIL]: 'send-email',
@@ -40,7 +41,11 @@ export function createChannelQueueProducer(redisUrl: string): ChannelQueueProduc
       await queue.add(
         CHANNEL_JOB_NAME,
         { deliveryId },
-        { jobId: deliveryId, ...(delay === undefined ? {} : { delay }) },
+        {
+          ...DELIVERY_RETRY_JOB_OPTIONS,
+          jobId: deliveryId,
+          ...(delay === undefined ? {} : { delay }),
+        },
       );
     },
     async close() {

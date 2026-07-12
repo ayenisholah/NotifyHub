@@ -4,6 +4,7 @@ import {
   Channel,
   CHANNEL_QUEUE_NAMES,
   createRedisConnection,
+  createDeliveryBackoffStrategy,
   DeliveryStatus,
   DeliveryTransitionConflictError,
   transitionDelivery,
@@ -12,6 +13,8 @@ import {
 } from '@notifyhub/core';
 
 import type { EmailProvider, EmailSendResult } from './email-provider.js';
+import { ClassifiedDeliveryError } from './execution-error.js';
+import { runClassifiedDelivery } from './retry.js';
 import { renderTemplateField, type TemplateWarning } from './template-renderer.js';
 
 export type EmailTemplateField = 'subject' | 'text' | 'html';
@@ -42,9 +45,9 @@ export function renderEmailTemplate(input: RenderEmailTemplateInput): RenderedEm
   };
 }
 
-export class EmailDeliveryError extends Error {
+export class EmailDeliveryError extends ClassifiedDeliveryError {
   public constructor(message: string) {
-    super(message);
+    super(message, false);
     this.name = 'EmailDeliveryError';
   }
 }
@@ -70,7 +73,9 @@ export class EmailTemplateNotFoundError extends EmailDeliveryError {
 export interface HandleEmailDeliveryOptions {
   onTemplateWarning?: (warning: EmailTemplateWarning) => void;
 }
-export type EmailDeliveryHandler = (deliveryId: string) => Promise<EmailSendResult>;
+export type EmailDeliveryHandler = ((deliveryId: string) => Promise<EmailSendResult>) & {
+  readonly prisma: PrismaClient;
+};
 
 const active = new Map<string, Promise<EmailSendResult>>();
 
@@ -159,13 +164,14 @@ export function createEmailDeliveryHandler(
     return result;
   };
 
-  return (deliveryId) => {
+  const handler = (deliveryId: string) => {
     const existing = active.get(deliveryId);
     if (existing !== undefined) return existing;
     const promise = execute(deliveryId).finally(() => active.delete(deliveryId));
     active.set(deliveryId, promise);
     return promise;
   };
+  return Object.assign(handler, { prisma });
 }
 
 export interface EmailWorker {
@@ -174,8 +180,14 @@ export interface EmailWorker {
 export function createEmailWorker(redisUrl: string, handler: EmailDeliveryHandler): EmailWorker {
   const worker = new Worker<ChannelJobData>(
     CHANNEL_QUEUE_NAMES[Channel.EMAIL],
-    async (job) => handler(job.data.deliveryId),
-    { connection: createRedisConnection(redisUrl) },
+    async (job) =>
+      runClassifiedDelivery(handler.prisma, job.data.deliveryId, async () =>
+        handler(job.data.deliveryId),
+      ),
+    {
+      connection: createRedisConnection(redisUrl),
+      settings: { backoffStrategy: createDeliveryBackoffStrategy() },
+    },
   );
   worker.on('error', () => undefined);
   return { close: async () => worker.close() };

@@ -15,4 +15,5 @@
 - Added restart-safe in-app delivery processing with Handlebars rendering, atomic inbox/timeline persistence, and typed at-least-once Redis publication.
 - Added provider-neutral email delivery with Mailpit SMTP, Resend and SendGrid HTTP adapters, consistent safe template rendering, explicit provider configuration, and a restart-safe BullMQ email worker.
 - Added a deterministic mock-SMS provider and restart-safe BullMQ worker with reproducible attempt-based failures, safe delivery logs, plain-text template rendering, and explicit configuration.
+- Added classified five-attempt delivery retries with exponential jittered BullMQ backoff, sanitized provider errors, monotonic PostgreSQL attempt timelines, and permanent/exhausted failure handling.
 - Established `docs/notifyhub-engineering-doc.md` as the canonical engineering source of truth.
