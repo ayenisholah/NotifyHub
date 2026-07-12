@@ -37,6 +37,18 @@ export interface RenderedEmailTemplate {
   html?: string;
 }
 
+export interface DigestRenderItem {
+  notificationId: string;
+  event: string;
+  payload: unknown;
+  createdAt: Date;
+}
+export interface DigestRenderContext {
+  user: { id: string; email: string; phone: string | null; timezone: string };
+  count: number;
+  items: DigestRenderItem[];
+}
+
 export function renderEmailTemplate(input: RenderEmailTemplateInput): RenderedEmailTemplate {
   const render = (template: string, field: EmailTemplateField, escapeHtml: boolean) =>
     renderTemplateField(template, field, input.context, escapeHtml, input.onWarning);
@@ -89,7 +101,17 @@ export function createEmailDeliveryHandler(
   const execute = async (deliveryId: string): Promise<EmailSendResult> => {
     const delivery = await prisma.delivery.findUnique({
       where: { id: deliveryId },
-      include: { notification: { include: { user: true } } },
+      include: {
+        notification: { include: { user: true } },
+        digestBatch: {
+          include: {
+            items: {
+              orderBy: [{ createdAt: 'asc' }, { notificationId: 'asc' }],
+              include: { notification: true },
+            },
+          },
+        },
+      },
     });
     if (delivery === null) throw new EmailDeliveryNotFoundError(deliveryId);
     if (delivery.channel !== Channel.EMAIL)
@@ -119,20 +141,30 @@ export function createEmailDeliveryHandler(
       },
     });
     if (template === null) throw new EmailTemplateNotFoundError(delivery.notification.event);
+    const user = {
+      id: delivery.notification.user.id,
+      email: delivery.notification.user.email,
+      phone: delivery.notification.user.phone,
+      timezone: delivery.notification.user.timezone,
+    };
+    const digestItems = delivery.digestBatch?.items.map(({ notification, createdAt }) => ({
+      notificationId: notification.id,
+      event: notification.event,
+      payload: notification.payload,
+      createdAt,
+    }));
+    if (delivery.digestBatch !== null && template.digestBody === null)
+      throw new EmailDeliveryError(`Digest email template has no digest body: ${template.id}`);
+    const context =
+      digestItems === undefined
+        ? { user, payload: delivery.notification.payload }
+        : { user, count: digestItems.length, items: digestItems };
     const rendered = renderEmailTemplate({
       event: delivery.notification.event,
       subject: template.subject,
-      body: template.body,
-      bodyHtml: template.bodyHtml,
-      context: {
-        user: {
-          id: delivery.notification.user.id,
-          email: delivery.notification.user.email,
-          phone: delivery.notification.user.phone,
-          timezone: delivery.notification.user.timezone,
-        },
-        payload: delivery.notification.payload,
-      },
+      body: delivery.digestBatch === null ? template.body : template.digestBody!,
+      bodyHtml: delivery.digestBatch === null ? template.bodyHtml : null,
+      context,
       ...(options.onTemplateWarning === undefined ? {} : { onWarning: options.onTemplateWarning }),
     });
 

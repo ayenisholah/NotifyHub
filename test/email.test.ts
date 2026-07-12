@@ -46,6 +46,27 @@ describe('email templates', () => {
       { field: 'html', path: 'user.name' },
     ]);
   });
+
+  it('renders ordered digest items without false each-item warnings', () => {
+    const onWarning = vi.fn();
+    expect(
+      renderEmailTemplate({
+        event: 'comment.created',
+        subject: '{{count}} new comments',
+        body: '{{#each items}}{{payload.author}}: {{{payload.text}}}\n{{/each}}',
+        bodyHtml: null,
+        context: {
+          count: 2,
+          items: [
+            { payload: { author: 'Ada', text: '<first>' } },
+            { payload: { author: 'Grace', text: 'second' } },
+          ],
+        },
+        onWarning,
+      }),
+    ).toEqual({ subject: '2 new comments', text: 'Ada: <first>\nGrace: second\n' });
+    expect(onWarning).not.toHaveBeenCalled();
+  });
 });
 
 describe('email provider adapters', () => {
