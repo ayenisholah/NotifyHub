@@ -13,6 +13,8 @@ interface DeliveryCreationBase {
   detail?: Prisma.InputJsonValue;
 }
 
+type DeliveryCreationClient = Pick<PrismaClient, 'delivery'>;
+
 export type CreateDeliveryInput = DeliveryCreationBase &
   (
     | {
@@ -95,7 +97,7 @@ function validateTransition(input: TransitionDeliveryInput): void {
 }
 
 export async function createDelivery(
-  prisma: PrismaClient,
+  prisma: DeliveryCreationClient,
   input: CreateDeliveryInput,
 ): Promise<Delivery> {
   const status = input.initialStatus ?? DeliveryStatus.QUEUED;

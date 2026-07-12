@@ -9,4 +9,5 @@
 - Added an injectable Express 5 notification API boundary with constant-time bearer authentication, strict request validation, body limits, and stable sanitized errors.
 - Added persist-first notification ingestion with global idempotency replay handling and a BullMQ route-queue producer with stable job identities.
 - Added atomic delivery creation and compare-and-set lifecycle transitions with append-only timeline events and typed conflict errors.
+- Added restart-safe English-template routing, explained no-op notifications, stable per-channel BullMQ jobs, and a real route worker.
 - Established `docs/notifyhub-engineering-doc.md` as the canonical engineering source of truth.

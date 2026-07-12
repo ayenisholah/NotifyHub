@@ -121,6 +121,7 @@ model Delivery {
   events            DeliveryEvent[]
 
   @@index([notificationId])
+  @@unique([notificationId, channel])
   @@index([status, scheduledFor])
   @@map("deliveries")
 }

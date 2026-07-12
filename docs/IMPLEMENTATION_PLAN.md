@@ -32,7 +32,7 @@ Tasks are executed top to bottom. The first unchecked box is the current task. D
 
 ### Day 3 — Routing
 
-- [ ] **W1D3-1 — Router and template discovery**
+- [x] **W1D3-1 — Router and template discovery**
   - Done when: eligible templates create deliveries and missing templates create an explained no-op.
 - [ ] **W1D3-2 — Preference precedence**
   - Done when: global, event override, quiet-hours, then digest table tests pass.

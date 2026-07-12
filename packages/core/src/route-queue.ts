@@ -12,7 +12,7 @@ export interface RouteQueueProducer {
   close(): Promise<void>;
 }
 
-function redisConnection(redisUrl: string): ConnectionOptions {
+export function createRedisConnection(redisUrl: string): ConnectionOptions {
   const url = new URL(redisUrl);
   const database = url.pathname.slice(1);
 
@@ -28,7 +28,7 @@ function redisConnection(redisUrl: string): ConnectionOptions {
 
 export function createRouteQueueProducer(redisUrl: string): RouteQueueProducer {
   const queue = new Queue<RouteJobData>(ROUTE_QUEUE_NAME, {
-    connection: redisConnection(redisUrl),
+    connection: createRedisConnection(redisUrl),
   });
 
   return {

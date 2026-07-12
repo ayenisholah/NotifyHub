@@ -67,3 +67,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (`scripts/verify.ps1`; `bash scripts/verify.sh`; format, lint, strict compilation, build, and local Vitest tests passed; `npm audit`; `git diff --check`). Docker-backed lifecycle integration remains required by GitHub Actions because no local container runtime is installed.
 - Next: W1D3-1 — Router and template discovery.
 - Blockers/notes: router/worker consumers and DLQ retry semantics remain deferred. Future delivery state changes must use the exported lifecycle helpers; `DLQ → QUEUED` is intentionally not supported yet.
+
+## 2026-07-12 — W1D3-1
+
+- Did: added English-template discovery; atomic accepted-to-routed/no-op notification handling; queued delivery/event creation with injected provider selection; restart-safe routed replay; unique notification/channel deliveries; stable email, SMS, and in-app BullMQ jobs; a real route worker; and PostgreSQL/Redis coverage for matching, explained no-ops, concurrency, partial enqueue recovery, and queue consumption without channel workers.
+- Verify: PASS (`scripts/verify.ps1`; `bash scripts/verify.sh`; format, lint, strict compilation, build, and local Vitest tests passed; `npm audit`; `git diff --check`). Docker-backed router integration remains required by GitHub Actions because no local container runtime is installed.
+- Next: W1D3-2 — Preference precedence.
+- Blockers/notes: preference evaluation, critical overrides, digests, quiet-hours scheduling, and channel consumers remain deferred. Router replays intentionally enqueue stable delivery IDs so BullMQ deduplicates completed fan-out after partial Redis failure. Runtime channel queues use hyphens because BullMQ 5 rejects the specification's conceptual colon-separated labels.
