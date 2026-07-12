@@ -20,6 +20,8 @@ const validEnvironment = {
   EMAIL_FROM: 'notifyhub@example.test',
   MAILPIT_HOST: 'localhost',
   MAILPIT_PORT: '1025',
+  SMS_PROVIDER: 'mock',
+  MOCK_SMS_FAILURE_RATE: '0.25',
 } as const;
 
 afterEach(() => {
@@ -45,6 +47,7 @@ describe('parseConfig', () => {
         host: 'localhost',
         port: 1025,
       },
+      sms: { provider: 'mock', failureRate: 0.25 },
     });
     expect(Object.isFrozen(config)).toBe(true);
   });
@@ -60,6 +63,7 @@ describe('parseConfig', () => {
       EMAIL_FROM: validEnvironment.EMAIL_FROM,
       MAILPIT_HOST: validEnvironment.MAILPIT_HOST,
       MAILPIT_PORT: validEnvironment.MAILPIT_PORT,
+      SMS_PROVIDER: validEnvironment.SMS_PROVIDER,
     };
 
     expect(parseConfig(required)).toMatchObject({
@@ -90,9 +94,29 @@ describe('parseConfig', () => {
       'TOKEN_SECRET',
       'EMAIL_PROVIDER',
       'EMAIL_FROM',
+      'SMS_PROVIDER',
     ]) {
       expect((error as Error).message).toContain(name);
     }
+  });
+
+  it('defaults the mock SMS failure rate and validates its inclusive range', () => {
+    expect(parseConfig({ ...validEnvironment, MOCK_SMS_FAILURE_RATE: undefined })).toMatchObject({
+      sms: { provider: 'mock', failureRate: 0 },
+    });
+    for (const failureRate of ['0', '1']) {
+      expect(
+        parseConfig({ ...validEnvironment, MOCK_SMS_FAILURE_RATE: failureRate }),
+      ).toMatchObject({ sms: { failureRate: Number(failureRate) } });
+    }
+    for (const failureRate of ['-0.1', '1.1', 'invalid']) {
+      expect(() =>
+        parseConfig({ ...validEnvironment, MOCK_SMS_FAILURE_RATE: failureRate }),
+      ).toThrow(/MOCK_SMS_FAILURE_RATE/);
+    }
+    expect(() => parseConfig({ ...validEnvironment, SMS_PROVIDER: 'twilio' })).toThrow(
+      /SMS_PROVIDER/,
+    );
   });
 
   it('selects hosted providers and requires only their credential', () => {

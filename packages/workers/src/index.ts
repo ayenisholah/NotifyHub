@@ -47,6 +47,37 @@ export {
   EmailTemplateNotFoundError,
   renderEmailTemplate,
 } from './email.js';
+export {
+  createMockSmsProvider,
+  createSmsProvider,
+  deterministicMockSmsOutcome,
+  MockSmsProviderError,
+} from './sms-provider.js';
+export type {
+  MockSmsLogEvent,
+  MockSmsLogger,
+  MockSmsOutcome,
+  SmsMessage,
+  SmsProvider,
+  SmsSendResult,
+} from './sms-provider.js';
+export {
+  createSmsDeliveryHandler,
+  createSmsWorker,
+  renderSmsTemplate,
+  SmsDeliveryError,
+  SmsDeliveryNotFoundError,
+  SmsProviderMismatchError,
+  SmsRecipientMissingError,
+  SmsTemplateNotFoundError,
+} from './sms.js';
+export type {
+  HandleSmsDeliveryOptions,
+  RenderSmsTemplateInput,
+  SmsDeliveryHandler,
+  SmsTemplateWarning,
+  SmsWorker,
+} from './sms.js';
 export type {
   EmailDeliveryHandler,
   EmailTemplateField,
