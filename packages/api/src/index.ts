@@ -8,7 +8,12 @@ import express, {
 } from 'express';
 import { z } from 'zod';
 
-import { packageIdentity as corePackage } from '@notifyhub/core';
+import {
+  NotificationStatus,
+  packageIdentity as corePackage,
+  type Prisma,
+  type PrismaClient,
+} from '@notifyhub/core';
 
 export const packageIdentity = '@notifyhub/api' as const;
 export const dependencies = [corePackage] as const;
@@ -26,9 +31,52 @@ export type NotifyRequest = z.infer<typeof notifyRequestSchema>;
 
 export interface NotifyResult {
   notificationId: string;
+  replayed: boolean;
 }
 
 export type NotifyHandler = (request: NotifyRequest) => Promise<NotifyResult>;
+
+export interface RouteEnqueuer {
+  enqueue(notificationId: string): Promise<void>;
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return error !== null && typeof error === 'object' && 'code' in error && error.code === 'P2002';
+}
+
+export function createPersistentNotifyHandler(
+  prisma: PrismaClient,
+  routeEnqueuer: RouteEnqueuer,
+): NotifyHandler {
+  return async (request) => {
+    let notification;
+    try {
+      notification = await prisma.notification.create({
+        data: {
+          userId: request.userId,
+          event: request.event,
+          payload: request.payload as Prisma.InputJsonValue,
+          status: NotificationStatus.ACCEPTED,
+          ...(request.idempotencyKey === undefined
+            ? {}
+            : { idempotencyKey: request.idempotencyKey }),
+        },
+      });
+    } catch (error) {
+      if (request.idempotencyKey === undefined || !isUniqueConstraintError(error)) {
+        throw error;
+      }
+
+      const original = await prisma.notification.findUniqueOrThrow({
+        where: { idempotencyKey: request.idempotencyKey },
+      });
+      return { notificationId: original.id, replayed: true };
+    }
+
+    await routeEnqueuer.enqueue(notification.id);
+    return { notificationId: notification.id, replayed: false };
+  };
+}
 
 export interface CreateAppOptions {
   apiKey: string;
@@ -122,7 +170,7 @@ export function createApp(options: CreateAppOptions): express.Express {
       }
 
       const result = await options.notify(parsed.data);
-      response.status(202).json({ notificationId: result.notificationId });
+      response.status(result.replayed ? 200 : 202).json({ notificationId: result.notificationId });
     },
   );
 
