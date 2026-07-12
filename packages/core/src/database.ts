@@ -18,3 +18,4 @@ export {
   DigestBatchStatus,
   NotificationStatus,
 } from './generated/prisma/client.js';
+export { Prisma } from './generated/prisma/client.js';

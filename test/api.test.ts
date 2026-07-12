@@ -3,10 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   createApp,
+  createPersistentNotifyHandler,
   type NotifyHandler,
   type NotifyRequest,
   type NotifyResult,
 } from '../packages/api/src/index.js';
+import type { PrismaClient } from '../packages/core/src/index.js';
 
 const apiKey = 'correct-api-key-with-enough-entropy';
 const authorization = `Bearer ${apiKey}`;
@@ -18,7 +20,10 @@ const validBody = {
 };
 
 function appWith(
-  handler: NotifyHandler = vi.fn(async () => ({ notificationId: 'notification-1' })),
+  handler: NotifyHandler = vi.fn(async () => ({
+    notificationId: 'notification-1',
+    replayed: false,
+  })),
 ) {
   return { app: createApp({ apiKey, notify: handler }), handler };
 }
@@ -37,8 +42,25 @@ describe('POST /v1/notify authentication', () => {
     expect(handler).toHaveBeenCalledOnce();
     expect(handler).toHaveBeenCalledWith(validBody satisfies NotifyRequest);
 
-    const result: NotifyResult = { notificationId: response.body.notificationId as string };
+    const result: NotifyResult = {
+      notificationId: response.body.notificationId as string,
+      replayed: false,
+    };
     expect(result.notificationId).toBe('notification-1');
+  });
+
+  it('returns 200 with the original ID for an idempotency replay', async () => {
+    const { app } = appWith(
+      vi.fn(async () => ({ notificationId: 'notification-original', replayed: true })),
+    );
+
+    const response = await request(app)
+      .post('/v1/notify')
+      .set('Authorization', authorization)
+      .send(validBody);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ notificationId: 'notification-original' });
   });
 
   it.each([
@@ -160,5 +182,29 @@ describe('POST /v1/notify failures', () => {
     expect(response.text).not.toContain('secret-request-value');
     expect(response.text).not.toContain(secretException);
     expect(response.text).not.toContain('stack');
+  });
+
+  it('sanitizes database failures from the persistent handler', async () => {
+    const databaseMessage = 'database unavailable at private-host';
+    const prisma = {
+      notification: { create: vi.fn(async () => Promise.reject(new Error(databaseMessage))) },
+    } as unknown as PrismaClient;
+    const enqueue = vi.fn(async () => undefined);
+    const app = createApp({
+      apiKey,
+      notify: createPersistentNotifyHandler(prisma, { enqueue }),
+    });
+
+    const response = await request(app)
+      .post('/v1/notify')
+      .set('Authorization', authorization)
+      .send(validBody);
+
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({
+      error: { code: 'internal_error', message: 'Internal server error' },
+    });
+    expect(response.text).not.toContain(databaseMessage);
+    expect(enqueue).not.toHaveBeenCalled();
   });
 });

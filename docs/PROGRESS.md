@@ -53,3 +53,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (`npm ci`; `scripts/verify.ps1`; `bash scripts/verify.sh`; format, lint, strict compilation, build, and 31 Vitest tests including 22 API tests all passed; `npm audit` reported 0 vulnerabilities; `git diff --check`).
 - Next: W1D2-2 — Persist-first idempotent ingestion.
 - Blockers/notes: the Docker-backed PostgreSQL integration suite remains delegated to GitHub Actions and could not run locally because no container runtime was available. Replay behavior, persistence, and queueing remain intentionally deferred to W1D2-2.
+
+## 2026-07-12 — W1D2-2
+
+- Did: added Prisma-backed persist-first notification ingestion; global idempotency conflict replay with original IDs and no duplicate enqueue; 202/200 response selection; a BullMQ route producer with stable queue, job name, payload, and UUID job identity; and PostgreSQL/Redis integration coverage for concurrency, immutable replays, independent unkeyed requests, commit-before-enqueue, retained rows after queue failure, sanitized failures, and queue cleanup without a worker.
+- Verify: PASS (`npm ci` with a workspace-local cache; `scripts/verify.ps1`; `bash scripts/verify.sh`; format, lint, strict compilation, build, and 33 local Vitest tests all passed; focused API tests passed; `git diff --check`). Docker-backed PostgreSQL/Redis suites were collected but could not run locally because no container runtime is installed; they remain required by GitHub Actions.
+- Next: W1D2-3 — Atomic delivery timeline transitions.
+- Blockers/notes: user creation, router consumption, and automated reconciliation of accepted rows after Redis failure remain deferred. Accepted rows are intentionally not deleted when enqueueing fails.
