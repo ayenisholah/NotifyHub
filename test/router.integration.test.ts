@@ -308,37 +308,31 @@ describe.sequential('template-based notification router', () => {
       orderBy: { channel: 'asc' },
     });
     expect(deliveries).toHaveLength(3);
-    expect(deliveries).toEqual(
-      expect.arrayContaining([
+    const deliveriesByChannel = new Map(deliveries.map((delivery) => [delivery.channel, delivery]));
+    expect(deliveriesByChannel.get(Channel.EMAIL)).toMatchObject({
+      status: 'SCHEDULED',
+      scheduledFor: new Date('2026-07-13T07:00:00Z'),
+      events: [
         {
-          channel: Channel.EMAIL,
           status: 'SCHEDULED',
-          scheduledFor: new Date('2026-07-13T07:00:00Z'),
-          events: [
-            {
-              status: 'SCHEDULED',
-              detail: {
-                reason: 'quiet_hours',
-                timezone: 'Africa/Lagos',
-                scheduledFor: '2026-07-13T07:00:00.000Z',
-              },
-            },
-          ],
+          detail: {
+            reason: 'quiet_hours',
+            timezone: 'Africa/Lagos',
+            scheduledFor: '2026-07-13T07:00:00.000Z',
+          },
         },
-        {
-          channel: Channel.IN_APP,
-          status: 'QUEUED',
-          scheduledFor: null,
-          events: [{ status: 'QUEUED' }],
-        },
-        {
-          channel: Channel.SMS,
-          status: 'SCHEDULED',
-          scheduledFor: new Date('2026-07-13T07:00:00Z'),
-          events: [{ status: 'SCHEDULED' }],
-        },
-      ]),
-    );
+      ],
+    });
+    expect(deliveriesByChannel.get(Channel.IN_APP)).toMatchObject({
+      status: 'QUEUED',
+      scheduledFor: null,
+      events: [{ status: 'QUEUED' }],
+    });
+    expect(deliveriesByChannel.get(Channel.SMS)).toMatchObject({
+      status: 'SCHEDULED',
+      scheduledFor: new Date('2026-07-13T07:00:00Z'),
+      events: [{ status: 'SCHEDULED' }],
+    });
     expect(enqueue).toHaveBeenCalledTimes(3);
     expect(enqueue.mock.calls.map(([channel, , scheduledFor]) => [channel, scheduledFor])).toEqual(
       expect.arrayContaining([
