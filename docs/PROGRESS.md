@@ -25,3 +25,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (`scripts/verify.ps1`; required files and publication exclusions confirmed).
 - Next: W1D1-1 — TypeScript workspace scaffold.
 - Blockers/notes: work must remain one task per verified change. No application behavior is currently claimed.
+
+## 2026-07-12 — W1D1-1
+
+- Did: added the Node.js 22 npm-workspaces scaffold for private core, API, and workers packages; strict ESM TypeScript project references; ESLint, Prettier, Vitest, build and verification commands; a package-boundary test; lockfile-based CI; and reliable native-command failure propagation in the Windows verifier. Corrected the canonical specification reference to `docs/notifyhub-engineering-doc.md` and removed the competing summary document.
+- Verify: PASS (`npm ci`; `scripts/verify.ps1`; `bash scripts/verify.sh`; format check, lint, strict compilation, clean workspace build, and 1 Vitest test all passed; npm audit reported 0 vulnerabilities).
+- Next: W1D1-2 — Validated configuration.
+- Blockers/notes: runtime dependencies and application behavior remain intentionally absent. Add Zod and environment parsing only in W1D1-2.
