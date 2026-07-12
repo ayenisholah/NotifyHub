@@ -95,3 +95,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (`scripts/verify.ps1`; `bash scripts/verify.sh`; format, lint, strict compilation, build, and 64 local Vitest tests passed; GitHub Actions run 29191868022 passed all 36 PostgreSQL/Redis integration tests; `npm audit`; `git diff --check`).
 - Next: W1D4-2 — Email interface and Mailpit worker.
 - Blockers/notes: inbox persistence is exactly once by notification; Redis publication is at least once and later consumers must deduplicate by inbox message ID. Retry/DLQ classification remains W1D5, and the WebSocket gateway remains W2D2-2.
+
+## 2026-07-12 — W1D4-2
+
+- Did: added mandatory discriminated email provider configuration; provider-neutral message/result contracts; injectable Mailpit SMTP, Resend, and SendGrid adapters with normalized message IDs and sanitized failures; shared Handlebars missing-variable diagnostics; separately escaped email HTML rendering; and an idempotent BullMQ email handler that records processing before provider I/O, preserves recoverable processing rows after failure, and completes sent replays without sending again. Added configuration, rendering, adapter, PostgreSQL lifecycle, concurrency, and real Redis/Mailpit worker coverage.
+- Verify: PASS (format, lint, strict typecheck, build, and 72 local Vitest tests passed; `npm audit` reported 0 vulnerabilities; integration tests were collected locally and remain required in GitHub Actions because no container runtime is installed).
+- Next: W1D4-3 — Deterministic mock-SMS worker.
+- Blockers/notes: Resend has provider-level idempotency. SMTP and SendGrid retain a duplicate window if the process dies after provider acceptance but before the SENT transition. Retry classification, attempt limits, backoff, and DLQ policy remain W1D5.

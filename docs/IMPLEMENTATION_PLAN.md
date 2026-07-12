@@ -42,7 +42,7 @@ Tasks are executed top to bottom. The first unchecked box is the current task. D
 ### Day 4 — Channels
 
 - [x] **W1D4-1 — Restart-safe in-app worker**
-- [ ] **W1D4-2 — Email interface and Mailpit worker**
+- [x] **W1D4-2 — Email interface and Mailpit worker**
 - [ ] **W1D4-3 — Deterministic mock-SMS worker**
 
 ### Day 5 — Recovery (M1)

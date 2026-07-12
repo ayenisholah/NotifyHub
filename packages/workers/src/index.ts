@@ -26,6 +26,36 @@ export {
   renderInAppTemplate,
   toInboxMessageCreatedEvent,
 } from './in-app.js';
+export {
+  createEmailProvider,
+  createMailpitEmailProvider,
+  createResendEmailProvider,
+  createSendGridEmailProvider,
+} from './email-provider.js';
+export type {
+  EmailHttpClient,
+  EmailMessage,
+  EmailProvider,
+  EmailSendResult,
+} from './email-provider.js';
+export {
+  createEmailDeliveryHandler,
+  createEmailWorker,
+  EmailDeliveryError,
+  EmailDeliveryNotFoundError,
+  EmailProviderMismatchError,
+  EmailTemplateNotFoundError,
+  renderEmailTemplate,
+} from './email.js';
+export type {
+  EmailDeliveryHandler,
+  EmailTemplateField,
+  EmailTemplateWarning,
+  EmailWorker,
+  HandleEmailDeliveryOptions,
+  RenderedEmailTemplate,
+  RenderEmailTemplateInput,
+} from './email.js';
 export type {
   CloseableInboxPublisher,
   HandleInAppDeliveryOptions,
