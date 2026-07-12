@@ -179,7 +179,16 @@ export function createEmailDeliveryHandler(
 export interface EmailWorker {
   close(): Promise<void>;
 }
-export function createEmailWorker(redisUrl: string, handler: EmailDeliveryHandler): EmailWorker {
+export interface ChannelWorkerRuntimeOptions {
+  concurrency?: number;
+  lockDuration?: number;
+  stalledInterval?: number;
+}
+export function createEmailWorker(
+  redisUrl: string,
+  handler: EmailDeliveryHandler,
+  options: ChannelWorkerRuntimeOptions = {},
+): EmailWorker {
   const dlq = createDlqProducer(redisUrl);
   const worker = new Worker<ChannelJobData>(
     CHANNEL_QUEUE_NAMES[Channel.EMAIL],
@@ -193,6 +202,11 @@ export function createEmailWorker(redisUrl: string, handler: EmailDeliveryHandle
     {
       connection: createRedisConnection(redisUrl),
       settings: { backoffStrategy: createDeliveryBackoffStrategy() },
+      ...(options.concurrency === undefined ? {} : { concurrency: options.concurrency }),
+      ...(options.lockDuration === undefined ? {} : { lockDuration: options.lockDuration }),
+      ...(options.stalledInterval === undefined
+        ? {}
+        : { stalledInterval: options.stalledInterval }),
     },
   );
   worker.on('error', () => undefined);

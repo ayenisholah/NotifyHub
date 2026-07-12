@@ -49,7 +49,7 @@ Tasks are executed top to bottom. The first unchecked box is the current task. D
 
 - [x] **W1D5-1 — Five-attempt retry classification**
 - [x] **W1D5-2 — DLQ storage and operator retry**
-- [ ] **W1D5-3 — Worker-kill acceptance test**
+- [x] **W1D5-3 — Worker-kill acceptance test**
   - Done when: restart leaves zero lost or permanently non-terminal deliveries.
 
 ## Week 2 — Experience and operations

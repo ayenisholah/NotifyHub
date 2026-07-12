@@ -123,3 +123,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (format, strict typecheck, build, and 96 local Vitest tests passed; PostgreSQL/Redis integration coverage includes poison parking, listing, repair, requeue, and successful completion; container-backed execution remains delegated to GitHub Actions).
 - Next: W1D5-3 — Worker-kill acceptance test.
 - Blockers/notes: PostgreSQL remains listable if Redis parking fails. W1D5-3 adds the broader reconciliation and process-kill acceptance sweep for arbitrary in-flight drift.
+
+## 2026-07-12 — W1D5-3 (M1)
+
+- Did: added idempotent persisted-work reconciliation for accepted notifications, nonterminal deliveries, failed deliveries, and missing DLQ jobs; exposed testable BullMQ worker recovery timing; added a real forked email worker harness; and added an isolated 500-delivery reliability suite that kills the worker after Mailpit accepts SMTP but before SENT persistence, restarts processing, verifies terminal convergence, permits only the documented duplicate, and confirms poison DLQ parking. Added shell and PowerShell entrypoints plus scheduled/manual GitHub Actions execution.
+- Verify: PASS (format, strict typecheck, standard build/tests, and focused reconciliation tests pass locally; the Docker-backed 500-delivery SIGKILL gate is isolated under `npm run test:kill` for Linux GitHub Actions where a container runtime is available).
+- Next: W2D1-1 — Race-safe digest batches.
+- Blockers/notes: SMTP can duplicate across the provider-send/database-commit boundary; the acceptance gate proves and bounds that window rather than claiming exactly once. Production scheduling of reconciliation remains part of later operations work.

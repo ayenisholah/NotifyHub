@@ -17,4 +17,5 @@
 - Added a deterministic mock-SMS provider and restart-safe BullMQ worker with reproducible attempt-based failures, safe delivery logs, plain-text template rendering, and explicit configuration.
 - Added classified five-attempt delivery retries with exponential jittered BullMQ backoff, sanitized provider errors, monotonic PostgreSQL attempt timelines, and permanent/exhausted failure handling.
 - Added PostgreSQL-authoritative dead-letter storage, stable BullMQ DLQ jobs, operator-key inspection and replay endpoints, and restart-safe fresh-attempt recovery.
+- Added persisted-work reconciliation and a scheduled 500-delivery worker-kill reliability gate proving stalled-job recovery, terminal convergence, poison DLQ parking, and the documented SMTP duplicate window.
 - Established `docs/notifyhub-engineering-doc.md` as the canonical engineering source of truth.
