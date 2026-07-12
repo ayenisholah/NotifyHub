@@ -13,6 +13,7 @@ import {
   createPrismaClient,
   createRouteQueueProducer,
   NotificationStatus,
+  ROUTING_REASONS,
   ROUTE_QUEUE_NAME,
   type ChannelJobData,
   type PrismaClient,
@@ -22,6 +23,7 @@ import {
   createRouteWorker,
   NotificationNotFoundError,
   NO_TEMPLATES_REASON,
+  PREFERENCES_DISABLED_REASON,
   type ProviderMapping,
 } from '../packages/workers/src/index.js';
 
@@ -63,11 +65,11 @@ afterAll(async () => {
   await Promise.all([postgres?.stop(), redis?.stop()]);
 });
 
-async function createNotification(label: string, event = 'invoice.paid') {
+async function createNotification(label: string, event = 'invoice.paid', payload = {}) {
   const user = await prisma.user.create({
     data: { id: `router-${label}`, email: `router-${label}@example.test` },
   });
-  return prisma.notification.create({ data: { userId: user.id, event, payload: {} } });
+  return prisma.notification.create({ data: { userId: user.id, event, payload } });
 }
 
 async function waitFor<T>(read: () => Promise<T | null>): Promise<T> {
@@ -135,6 +137,144 @@ describe.sequential('template-based notification router', () => {
     });
     expect(await prisma.delivery.count({ where: { notificationId: notification.id } })).toBe(0);
     expect(enqueue).not.toHaveBeenCalled();
+  });
+
+  it('resolves global, prefix, and exact preferences independently by channel', async () => {
+    const notification = await createNotification('precedence', 'comment.reply.created');
+    await prisma.template.createMany({
+      data: Object.values(Channel).map((channel) => ({
+        event: notification.event,
+        channel,
+        body: channel,
+      })),
+    });
+    await prisma.preference.createMany({
+      data: [
+        { userId: notification.userId, channel: Channel.EMAIL, category: '*', enabled: false },
+        {
+          userId: notification.userId,
+          channel: Channel.EMAIL,
+          category: 'comment.*',
+          enabled: true,
+        },
+        {
+          userId: notification.userId,
+          channel: Channel.EMAIL,
+          category: 'comment.reply.*',
+          enabled: false,
+        },
+        {
+          userId: notification.userId,
+          channel: Channel.EMAIL,
+          category: notification.event,
+          enabled: true,
+        },
+        { userId: notification.userId, channel: Channel.SMS, category: '*', enabled: true },
+        {
+          userId: notification.userId,
+          channel: Channel.SMS,
+          category: notification.event,
+          enabled: false,
+        },
+        { userId: notification.userId, channel: Channel.IN_APP, category: '*', enabled: false },
+        {
+          userId: notification.userId,
+          channel: Channel.IN_APP,
+          category: 'comment.*',
+          enabled: true,
+        },
+      ],
+    });
+    const enqueue = vi.fn(async () => undefined);
+
+    await createRouteNotificationHandler(prisma, { enqueue }, providers)(notification.id);
+
+    const deliveries = await prisma.delivery.findMany({
+      where: { notificationId: notification.id },
+      include: { events: true },
+      orderBy: { channel: 'asc' },
+    });
+    expect(deliveries.map(({ channel }) => channel)).toEqual([Channel.EMAIL, Channel.IN_APP]);
+    expect(deliveries.map(({ events }) => events[0]?.detail)).toEqual([
+      { locale: 'en', preferenceCategory: notification.event, reason: ROUTING_REASONS.IMMEDIATE },
+      { locale: 'en', preferenceCategory: 'comment.*', reason: ROUTING_REASONS.IMMEDIATE },
+    ]);
+    expect(enqueue).toHaveBeenCalledTimes(2);
+  });
+
+  it('makes fully disabled templates an explained no-op, even when critical', async () => {
+    const notification = await createNotification('disabled', 'security.alert', { critical: true });
+    await prisma.template.createMany({
+      data: [
+        { event: notification.event, channel: Channel.EMAIL, body: 'Email' },
+        { event: notification.event, channel: Channel.IN_APP, body: 'Inbox' },
+      ],
+    });
+    await prisma.preference.createMany({
+      data: [Channel.EMAIL, Channel.IN_APP].map((channel) => ({
+        userId: notification.userId,
+        channel,
+        category: '*',
+        enabled: false,
+      })),
+    });
+    const enqueue = vi.fn(async () => undefined);
+    const route = createRouteNotificationHandler(prisma, { enqueue }, providers);
+
+    await expect(route(notification.id)).resolves.toEqual({
+      status: NotificationStatus.NO_OP,
+      deliveryIds: [],
+    });
+    await expect(
+      prisma.notification.findUniqueOrThrow({ where: { id: notification.id } }),
+    ).resolves.toMatchObject({
+      status: NotificationStatus.NO_OP,
+      noOpReason: PREFERENCES_DISABLED_REASON,
+    });
+    expect(await prisma.delivery.count({ where: { notificationId: notification.id } })).toBe(0);
+    expect(enqueue).not.toHaveBeenCalled();
+
+    await prisma.preference.updateMany({
+      where: { userId: notification.userId },
+      data: { enabled: true },
+    });
+    await expect(route(notification.id)).resolves.toEqual({
+      status: NotificationStatus.NO_OP,
+      deliveryIds: [],
+    });
+    expect(await prisma.delivery.count({ where: { notificationId: notification.id } })).toBe(0);
+  });
+
+  it('does not rewrite routed channels after preferences change', async () => {
+    const notification = await createNotification('stable');
+    await prisma.template.createMany({
+      data: [
+        { event: notification.event, channel: Channel.EMAIL, body: 'Email' },
+        { event: notification.event, channel: Channel.SMS, body: 'SMS' },
+      ],
+    });
+    await prisma.preference.create({
+      data: { userId: notification.userId, channel: Channel.SMS, category: '*', enabled: false },
+    });
+    const route = createRouteNotificationHandler(
+      prisma,
+      { enqueue: async () => undefined },
+      providers,
+    );
+    const first = await route(notification.id);
+    await prisma.preference.updateMany({
+      where: { userId: notification.userId },
+      data: { enabled: true },
+    });
+    const replay = await route(notification.id);
+
+    expect(replay).toEqual(first);
+    expect(
+      await prisma.delivery.findMany({
+        where: { notificationId: notification.id },
+        select: { channel: true },
+      }),
+    ).toEqual([{ channel: Channel.EMAIL }]);
   });
 
   it('routes repeated and concurrent executions without duplicate deliveries or events', async () => {

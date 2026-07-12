@@ -30,5 +30,13 @@ export {
   ROUTE_QUEUE_NAME,
 } from './route-queue.js';
 export type { RouteJobData, RouteQueueProducer } from './route-queue.js';
+export { evaluateRouting, resolvePreference, ROUTING_REASONS } from './routing-precedence.js';
+export type {
+  PreferenceResolution,
+  PreferenceRule,
+  RoutingDecision,
+  RoutingEvaluationInput,
+  RoutingReason,
+} from './routing-precedence.js';
 
 export const packageIdentity = '@notifyhub/core' as const;
