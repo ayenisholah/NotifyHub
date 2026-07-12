@@ -14,7 +14,7 @@
     "@hono/node-server": "1.19.13"
   },
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b && npm run build -w @notifyhub/widget",
     "clean": "tsc -b --clean",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -22,10 +22,10 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "postinstall": "npm run prisma:generate",
-    "test": "vitest run",
+    "test": "vitest run && vitest run --config vitest.widget.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:kill": "npm run build && vitest run --config vitest.reliability.config.ts",
-    "typecheck": "tsc -b --pretty false",
+    "typecheck": "tsc -b --pretty false && npm run typecheck -w @notifyhub/widget",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run build && npm test"
   },
   "devDependencies": {

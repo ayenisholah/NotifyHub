@@ -158,3 +158,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (`npm run verify`; format, lint, strict typecheck, build, and 133 local Vitest tests passed). Real HTTP/WebSocket tests cover missing, duplicate, malformed, tampered, future, and expired credentials; verified-subject propagation; multiple sockets; cross-user isolation; message/unread ordering; invalid envelopes; room cleanup; and idempotent shutdown. PostgreSQL unread-count and Redis worker-publication integration coverage remains collected for the container-backed CI suite.
 - Next: W2D3-1 — Packable React/vanilla widget.
 - Blockers/notes: token expiry is intentionally enforced only during connection establishment. Redis pub/sub remains non-durable and at-least-once; consumers deduplicate by inbox message ID. Heartbeats, origin policy, metrics, and process-wide shutdown orchestration remain W2D4-1.
+
+## 2026-07-12 — W2D3-1
+
+- Did: completed `@notifyhub/widget` as a React component and idempotent vanilla mount API; added complete REST/WebSocket payload validation, newest-first message deduplication, cursor pagination, optimistic single/all read reconciliation, identity-safe resets, capped reconnect with polling fallback, accessible focus and Escape behavior, neutral CSS variables, and package exports with external React peers. Added deterministic jsdom component coverage and wired it into repository verification.
+- Verify: PASS (`npm run verify`; format, lint, strict typecheck, workspace build, 133 repository tests, and 5 widget tests passed; clean Vite output contained runnable ESM, declarations, source map, and `dist/styles.css`; `npm pack --dry-run` contained every exported path; built React and vanilla exports imported successfully).
+- Next: W2D3-2 — Accessible neutral demo host.
+- Blockers/notes: advanced visual customization, isolation, and the fake SaaS host remain scoped to W2D3-2. The widget treats REST and WebSocket unread values as authoritative and polls every 30 seconds only while realtime is disconnected.
