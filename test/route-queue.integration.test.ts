@@ -67,6 +67,10 @@ describe('BullMQ channel producer', () => {
       expect(job?.name).toBe(CHANNEL_JOB_NAME);
       expect(job?.id).toBe(deliveryId);
       expect(job?.data).toEqual({ deliveryId });
+      expect(job?.opts).toMatchObject({
+        attempts: 5,
+        backoff: { type: 'notifyhub-exponential-jitter', delay: 1_000 },
+      });
       expect(job?.delay).toBeGreaterThan(55_000);
       expect(job?.delay).toBeLessThanOrEqual(60_000);
       expect(await inspector.getDelayedCount()).toBe(1);

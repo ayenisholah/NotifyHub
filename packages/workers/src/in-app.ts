@@ -5,6 +5,7 @@ import {
   Channel,
   CHANNEL_QUEUE_NAMES,
   createRedisConnection,
+  createDeliveryBackoffStrategy,
   DeliveryStatus,
   DeliveryTransitionConflictError,
   transitionDeliveryInTransaction,
@@ -238,7 +239,10 @@ export function createInAppWorker(redisUrl: string, handler: InAppDeliveryHandle
   const worker = new Worker<ChannelJobData>(
     CHANNEL_QUEUE_NAMES[Channel.IN_APP],
     async (job) => handler(job.data.deliveryId),
-    { connection: createRedisConnection(redisUrl) },
+    {
+      connection: createRedisConnection(redisUrl),
+      settings: { backoffStrategy: createDeliveryBackoffStrategy() },
+    },
   );
   worker.on('error', () => undefined);
   return { close: async () => worker.close() };

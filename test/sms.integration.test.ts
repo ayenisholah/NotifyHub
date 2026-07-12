@@ -18,6 +18,8 @@ import {
   createSmsDeliveryHandler,
   createSmsWorker,
   MockSmsProviderError,
+  ProviderDeliveryError,
+  recordDeliveryFailure,
   SmsDeliveryError,
   SmsProviderMismatchError,
   SmsRecipientMissingError,
@@ -119,6 +121,68 @@ describe.sequential('restart-safe SMS delivery handler', () => {
     });
   });
 
+  it('records retrying attempts and fails the fifth attempt with sanitized errors', async () => {
+    const delivery = await fixture('retry-policy');
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      await prisma.delivery.update({
+        where: { id: delivery.id },
+        data: { status: DeliveryStatus.PROCESSING, attempts: attempt },
+      });
+      const outcome = await recordDeliveryFailure(
+        prisma,
+        delivery.id,
+        new ProviderDeliveryError('mock', true),
+      );
+      expect(outcome).toBe(attempt < 5 ? 'retry' : 'failed');
+    }
+    const persisted = await prisma.delivery.findUniqueOrThrow({
+      where: { id: delivery.id },
+      include: { events: { orderBy: { id: 'asc' } } },
+    });
+    expect(persisted).toMatchObject({
+      status: DeliveryStatus.FAILED,
+      attempts: 5,
+      lastError: 'mock delivery failed',
+    });
+    expect(persisted.events.map(({ status }) => status)).toEqual([
+      DeliveryStatus.QUEUED,
+      DeliveryStatus.RETRYING,
+      DeliveryStatus.RETRYING,
+      DeliveryStatus.RETRYING,
+      DeliveryStatus.RETRYING,
+      DeliveryStatus.FAILED,
+    ]);
+  });
+
+  it('claims permanent preflight failures once and keeps terminal rows stable', async () => {
+    const delivery = await fixture('permanent', { phone: null });
+    const handler = createSmsDeliveryHandler(prisma, provider());
+    let error: unknown;
+    try {
+      await handler(delivery.id);
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toBeInstanceOf(SmsRecipientMissingError);
+    await expect(recordDeliveryFailure(prisma, delivery.id, error)).resolves.toBe('failed');
+    await expect(recordDeliveryFailure(prisma, delivery.id, error)).resolves.toBe('failed');
+    await expect(
+      prisma.delivery.findUniqueOrThrow({
+        where: { id: delivery.id },
+        include: { events: { orderBy: { id: 'asc' } } },
+      }),
+    ).resolves.toMatchObject({
+      status: DeliveryStatus.FAILED,
+      attempts: 1,
+      lastError: 'SMS recipient phone is missing for user: sms-permanent',
+      events: [
+        { status: DeliveryStatus.QUEUED },
+        { status: DeliveryStatus.PROCESSING },
+        { status: DeliveryStatus.FAILED },
+      ],
+    });
+  });
+
   it('recovers processing attempts and serializes concurrency', async () => {
     const delivery = await fixture('processing');
     await prisma.delivery.update({
@@ -215,4 +279,54 @@ describe.sequential('mock SMS BullMQ worker', () => {
       await producer.close();
     }
   });
+
+  it('retries three transient failures and succeeds on execution four', async () => {
+    const delivery = await fixture('transient');
+    const attempts: number[] = [];
+    const mock = createMockSmsProvider(
+      { provider: 'mock', failureRate: 0 },
+      {
+        outcome: (_deliveryId, attempt) => {
+          attempts.push(attempt);
+          return attempt < 4;
+        },
+      },
+    );
+    const redisUrl = `redis://${redis.getHost()}:${redis.getMappedPort(6379)}`;
+    const worker = createSmsWorker(redisUrl, createSmsDeliveryHandler(prisma, mock));
+    const producer = createChannelQueueProducer(redisUrl);
+    try {
+      await producer.enqueue(Channel.SMS, delivery.id);
+      const deadline = Date.now() + 20_000;
+      let persisted = await prisma.delivery.findUniqueOrThrow({ where: { id: delivery.id } });
+      while (persisted.status !== DeliveryStatus.SENT && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        persisted = await prisma.delivery.findUniqueOrThrow({ where: { id: delivery.id } });
+      }
+      expect(attempts).toEqual([1, 2, 3, 4]);
+      expect(persisted).toMatchObject({
+        status: DeliveryStatus.SENT,
+        attempts: 4,
+        providerMessageId: `mock-sms-${delivery.id}-4`,
+      });
+      const events = await prisma.deliveryEvent.findMany({
+        where: { deliveryId: delivery.id },
+        orderBy: { id: 'asc' },
+      });
+      expect(events.map(({ status }) => status)).toEqual([
+        DeliveryStatus.QUEUED,
+        DeliveryStatus.PROCESSING,
+        DeliveryStatus.RETRYING,
+        DeliveryStatus.PROCESSING,
+        DeliveryStatus.RETRYING,
+        DeliveryStatus.PROCESSING,
+        DeliveryStatus.RETRYING,
+        DeliveryStatus.PROCESSING,
+        DeliveryStatus.SENT,
+      ]);
+    } finally {
+      await worker.close();
+      await producer.close();
+    }
+  }, 30_000);
 });

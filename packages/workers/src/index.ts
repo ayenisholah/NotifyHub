@@ -71,6 +71,13 @@ export {
   SmsRecipientMissingError,
   SmsTemplateNotFoundError,
 } from './sms.js';
+export {
+  ClassifiedDeliveryError,
+  classifyDeliveryError,
+  ProviderDeliveryError,
+} from './execution-error.js';
+export { recordDeliveryFailure, runClassifiedDelivery } from './retry.js';
+export type { DeliveryFailureOutcome } from './retry.js';
 export type {
   HandleSmsDeliveryOptions,
   RenderSmsTemplateInput,

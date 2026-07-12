@@ -109,3 +109,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (format, strict typecheck, build, and 79 local Vitest tests passed; PostgreSQL/Redis integration coverage was added and collected but requires the GitHub Actions container runtime).
 - Next: W1D5-1 — Five-attempt retry classification.
 - Blockers/notes: simulated outcomes are stable for each delivery ID and persisted attempt, so W1D5 can test transient and permanent failures without process-order randomness. Retry transitions, backoff, jitter, terminal failure, and DLQ policy remain deferred to W1D5.
+
+## 2026-07-12 — W1D5-1
+
+- Did: added shared five-attempt BullMQ job policy with exponential 1-second-base backoff and bounded jitter; classified sanitized provider failures by HTTP/SMTP semantics; made mock-SMS failures retryable; classified channel validation errors as permanent; and added a shared failure recorder that advances PostgreSQL through processing/retrying or failed with monotonic attempts and append-only diagnostics. Email and SMS workers now stop permanent/exhausted jobs with BullMQ unrecoverable errors, while in-app publication receives queue retries without rewriting committed sent deliveries.
+- Verify: PASS (format, strict typecheck, build, and 91 local Vitest tests passed; PostgreSQL/Redis integration coverage includes retry timelines, permanent preflight failure, fifth-attempt exhaustion, stable channel job policy, and fail-three-then-succeed execution; container-backed execution remains delegated to GitHub Actions).
+- Next: W1D5-2 — DLQ storage and operator retry.
+- Blockers/notes: W1D5-1 terminates exhausted and permanent deliveries at FAILED. Moving jobs to the dedicated DLQ, listing them, and explicit operator replay remain W1D5-2.

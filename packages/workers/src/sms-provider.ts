@@ -1,5 +1,7 @@
 import type { SmsConfig, SmsProviderName } from '@notifyhub/core';
 
+import { ProviderDeliveryError } from './execution-error.js';
+
 export interface SmsMessage {
   to: string;
   text: string;
@@ -28,9 +30,9 @@ export interface MockSmsLogEvent {
 export type MockSmsLogger = (event: MockSmsLogEvent) => void;
 export type MockSmsOutcome = (deliveryId: string, attempt: number, failureRate: number) => boolean;
 
-export class MockSmsProviderError extends Error {
+export class MockSmsProviderError extends ProviderDeliveryError {
   public constructor() {
-    super('mock SMS delivery failed');
+    super('mock-sms', true);
     this.name = 'MockSmsProviderError';
   }
 }

@@ -2,6 +2,8 @@ import nodemailer, { type Transporter } from 'nodemailer';
 
 import type { EmailConfig, EmailProviderName } from '@notifyhub/core';
 
+import { ProviderDeliveryError } from './execution-error.js';
+
 export interface EmailMessage {
   to: string;
   subject: string;
@@ -23,12 +25,17 @@ export interface EmailHttpClient {
   fetch(input: string, init: RequestInit): Promise<Response>;
 }
 
-function providerFailure(provider: EmailProviderName, error: unknown): Error {
-  const status =
-    typeof error === 'object' && error !== null && 'status' in error
-      ? ` (HTTP ${String(error.status)})`
-      : '';
-  return new Error(`${provider} email delivery failed${status}`);
+function statusOf(error: unknown): number | undefined {
+  if (typeof error !== 'object' || error === null) return undefined;
+  for (const field of ['status', 'responseCode']) {
+    const value = (error as Record<string, unknown>)[field];
+    if (typeof value === 'number') return value;
+  }
+  return undefined;
+}
+
+function isRetryableHttp(status: number): boolean {
+  return status === 408 || status === 425 || status === 429 || status >= 500;
 }
 
 export function createMailpitEmailProvider(
@@ -55,7 +62,11 @@ export function createMailpitEmailProvider(
           throw new Error('missing message id');
         return { providerMessageId: result.messageId };
       } catch (error) {
-        throw providerFailure('mailpit', error);
+        const status = statusOf(error);
+        throw new ProviderDeliveryError('mailpit', status === undefined || status < 500, {
+          ...(status === undefined ? {} : { status }),
+          label: 'mailpit email',
+        });
       }
     },
   };
@@ -70,12 +81,22 @@ async function sendHttp(
 ): Promise<EmailSendResult> {
   try {
     const response = await client.fetch(url, init);
-    if (!response.ok) throw { status: response.status };
+    if (!response.ok)
+      throw new ProviderDeliveryError(provider, isRetryableHttp(response.status), {
+        status: response.status,
+        label: `${provider} email`,
+      });
     const providerMessageId = await readId(response);
-    if (providerMessageId === null) throw new Error('missing message id');
+    if (providerMessageId === null)
+      throw new ProviderDeliveryError(provider, true, { label: `${provider} email` });
     return { providerMessageId };
   } catch (error) {
-    throw providerFailure(provider, error);
+    if (error instanceof ProviderDeliveryError) throw error;
+    const status = statusOf(error);
+    throw new ProviderDeliveryError(provider, status === undefined || isRetryableHttp(status), {
+      ...(status === undefined ? {} : { status }),
+      label: `${provider} email`,
+    });
   }
 }
 
