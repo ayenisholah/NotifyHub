@@ -144,3 +144,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (Prisma generation, format, lint, strict typecheck, build, and local Vitest suite).
 - Next: W2D2-1 — User-scoped inbox REST.
 - Blockers/notes: provider calls remain in channel workers, and digest email intentionally emits plain text because templates expose only one digest body.
+
+## 2026-07-12 — W2D2-1
+
+- Did: added reusable 15-minute HMAC-SHA256 user tokens with deterministic issue/verify clocks; API-key-protected token issuance for existing users; bearer-token-scoped inbox listing with opaque stable cursors and unread counts; and idempotent single/all read mutations that preserve the first read timestamp. All reads and writes derive tenant identity from the verified token subject and return indistinguishable not-found responses for missing and cross-user messages.
+- Verify: PASS (format, lint, strict typecheck, build, and focused token/API tests; PostgreSQL integration coverage was added for tied-time pagination, cursor stability, unread counts, concurrent reads, replay, and tenant isolation, with execution delegated to CI because no local container runtime was available).
+- Next: W2D2-2 — Authenticated WebSocket gateway (M2).
+- Blockers/notes: tokens intentionally use the existing TOKEN_SECRET identity boundary so the WebSocket gateway can reuse the verifier; read-all covers rows unread when its transaction executes, so concurrently arriving messages may remain unread.
