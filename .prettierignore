@@ -1,5 +1,7 @@
 node_modules/
 dist/
+dist-client/
+dist-server/
 coverage/
 sample/
 notifyhub-engineering-doc.md

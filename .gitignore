@@ -9,3 +9,5 @@ test-results/
 *.log
 sample/
 packages/core/src/generated/prisma/
+packages/demo-host/dist-client/
+packages/demo-host/dist-server/
