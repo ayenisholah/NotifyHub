@@ -16,6 +16,10 @@ const validEnvironment = {
   NODE_ENV: 'test',
   PORT: '8080',
   LOG_LEVEL: 'debug',
+  EMAIL_PROVIDER: 'mailpit',
+  EMAIL_FROM: 'notifyhub@example.test',
+  MAILPIT_HOST: 'localhost',
+  MAILPIT_PORT: '1025',
 } as const;
 
 afterEach(() => {
@@ -35,6 +39,12 @@ describe('parseConfig', () => {
       nodeEnv: 'test',
       port: 8080,
       logLevel: 'debug',
+      email: {
+        provider: 'mailpit',
+        from: 'notifyhub@example.test',
+        host: 'localhost',
+        port: 1025,
+      },
     });
     expect(Object.isFrozen(config)).toBe(true);
   });
@@ -46,6 +56,10 @@ describe('parseConfig', () => {
       API_KEY: validEnvironment.API_KEY,
       OPERATOR_KEY: validEnvironment.OPERATOR_KEY,
       TOKEN_SECRET: validEnvironment.TOKEN_SECRET,
+      EMAIL_PROVIDER: validEnvironment.EMAIL_PROVIDER,
+      EMAIL_FROM: validEnvironment.EMAIL_FROM,
+      MAILPIT_HOST: validEnvironment.MAILPIT_HOST,
+      MAILPIT_PORT: validEnvironment.MAILPIT_PORT,
     };
 
     expect(parseConfig(required)).toMatchObject({
@@ -68,9 +82,46 @@ describe('parseConfig', () => {
     }
 
     expect(error).toBeInstanceOf(ConfigurationError);
-    for (const name of ['DATABASE_URL', 'REDIS_URL', 'API_KEY', 'OPERATOR_KEY', 'TOKEN_SECRET']) {
+    for (const name of [
+      'DATABASE_URL',
+      'REDIS_URL',
+      'API_KEY',
+      'OPERATOR_KEY',
+      'TOKEN_SECRET',
+      'EMAIL_PROVIDER',
+      'EMAIL_FROM',
+    ]) {
       expect((error as Error).message).toContain(name);
     }
+  });
+
+  it('selects hosted providers and requires only their credential', () => {
+    expect(
+      parseConfig({ ...validEnvironment, EMAIL_PROVIDER: 'resend', RESEND_API_KEY: 're_secret' }),
+    ).toMatchObject({ email: { provider: 'resend', apiKey: 're_secret' } });
+    expect(
+      parseConfig({
+        ...validEnvironment,
+        EMAIL_PROVIDER: 'sendgrid',
+        SENDGRID_API_KEY: 'sg_secret',
+      }),
+    ).toMatchObject({ email: { provider: 'sendgrid', apiKey: 'sg_secret' } });
+    expect(() => parseConfig({ ...validEnvironment, EMAIL_PROVIDER: 'resend' })).toThrow(
+      /RESEND_API_KEY/,
+    );
+  });
+
+  it('rejects invalid email providers and Mailpit ports without exposing credentials', () => {
+    expect(() =>
+      parseConfig({
+        ...validEnvironment,
+        EMAIL_PROVIDER: 'unknown',
+        RESEND_API_KEY: 'private-key',
+      }),
+    ).toThrow(/EMAIL_PROVIDER/);
+    expect(() => parseConfig({ ...validEnvironment, MAILPIT_PORT: '70000' })).toThrow(
+      /MAILPIT_PORT/,
+    );
   });
 
   it('reports invalid URL schemes and short secrets by variable without exposing values', () => {

@@ -1,5 +1,4 @@
 import { Worker } from 'bullmq';
-import Handlebars from 'handlebars';
 import { Redis } from 'ioredis';
 
 import {
@@ -12,6 +11,11 @@ import {
   type ChannelJobData,
   type PrismaClient,
 } from '@notifyhub/core';
+
+import {
+  renderTemplateField,
+  type TemplateWarning as SharedTemplateWarning,
+} from './template-renderer.js';
 
 export const INBOX_PUBSUB_CHANNEL = 'notifyhub:inbox';
 export const INBOX_MESSAGE_CREATED = 'inbox.message.created';
@@ -39,10 +43,7 @@ export interface CloseableInboxPublisher extends InboxPublisher {
   close(): Promise<void>;
 }
 
-export interface TemplateWarning {
-  field: 'title' | 'body';
-  path: string;
-}
+export type TemplateWarning = SharedTemplateWarning<'title' | 'body'>;
 
 export interface RenderInAppTemplateInput {
   event: string;
@@ -57,37 +58,11 @@ export interface RenderedInAppTemplate {
   body: string;
 }
 
-function valueAtPath(context: Record<string, unknown>, path: string): unknown {
-  let value: unknown = context;
-  for (const segment of path.split('.')) {
-    if (typeof value !== 'object' || value === null || !(segment in value)) return undefined;
-    value = (value as Record<string, unknown>)[segment];
-  }
-  return value;
-}
-
-function warnMissing(
-  template: string,
-  field: TemplateWarning['field'],
-  context: Record<string, unknown>,
-  onWarning?: (warning: TemplateWarning) => void,
-): void {
-  if (onWarning === undefined) return;
-  const paths = new Set(
-    [...template.matchAll(/{{{?\s*([A-Za-z_][\w.]*)\s*}?}}/g)].map((match) => match[1]!),
-  );
-  for (const path of paths) {
-    if (valueAtPath(context, path) === undefined) onWarning({ field, path });
-  }
-}
-
 export function renderInAppTemplate(input: RenderInAppTemplateInput): RenderedInAppTemplate {
   const titleTemplate = input.subject ?? input.event;
-  warnMissing(titleTemplate, 'title', input.context, input.onWarning);
-  warnMissing(input.body, 'body', input.context, input.onWarning);
   return {
-    title: Handlebars.compile(titleTemplate, { noEscape: true })(input.context),
-    body: Handlebars.compile(input.body, { noEscape: true })(input.context),
+    title: renderTemplateField(titleTemplate, 'title', input.context, false, input.onWarning),
+    body: renderTemplateField(input.body, 'body', input.context, false, input.onWarning),
   };
 }
 

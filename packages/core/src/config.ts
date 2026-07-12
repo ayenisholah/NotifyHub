@@ -26,7 +26,19 @@ const environmentSchema = z.object({
     .max(65535, 'must be between 1 and 65535')
     .default(4000),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']).default('info'),
+  EMAIL_PROVIDER: z.enum(['mailpit', 'resend', 'sendgrid']),
+  EMAIL_FROM: z.string().min(1, 'is required'),
+  MAILPIT_HOST: z.string().optional(),
+  MAILPIT_PORT: z.string().optional(),
+  RESEND_API_KEY: z.string().optional(),
+  SENDGRID_API_KEY: z.string().optional(),
 });
+
+export type EmailProviderName = 'mailpit' | 'resend' | 'sendgrid';
+export type EmailConfig =
+  | Readonly<{ provider: 'mailpit'; from: string; host: string; port: number }>
+  | Readonly<{ provider: 'resend'; from: string; apiKey: string }>
+  | Readonly<{ provider: 'sendgrid'; from: string; apiKey: string }>;
 
 export type AppConfig = Readonly<{
   databaseUrl: string;
@@ -37,6 +49,7 @@ export type AppConfig = Readonly<{
   nodeEnv: 'development' | 'test' | 'production';
   port: number;
   logLevel: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal' | 'silent';
+  email: EmailConfig;
 }>;
 
 export class ConfigurationError extends Error {
@@ -56,6 +69,7 @@ export function parseConfig(env: Readonly<Record<string, string | undefined>>): 
     throw new ConfigurationError(result.error.issues);
   }
 
+  const email = parseEmailConfig(result.data);
   return Object.freeze({
     databaseUrl: result.data.DATABASE_URL,
     redisUrl: result.data.REDIS_URL,
@@ -65,7 +79,38 @@ export function parseConfig(env: Readonly<Record<string, string | undefined>>): 
     nodeEnv: result.data.NODE_ENV,
     port: result.data.PORT,
     logLevel: result.data.LOG_LEVEL,
+    email: Object.freeze(email),
   });
+}
+
+function parseEmailConfig(data: z.infer<typeof environmentSchema>): EmailConfig {
+  const issues: z.core.$ZodIssue[] = [];
+  const required = (name: 'MAILPIT_HOST' | 'RESEND_API_KEY' | 'SENDGRID_API_KEY') => {
+    const value = data[name];
+    if (value === undefined || value.length === 0) {
+      issues.push({ code: 'custom', path: [name], message: 'is required' });
+      return '';
+    }
+    return value;
+  };
+  let email: EmailConfig;
+  if (data.EMAIL_PROVIDER === 'mailpit') {
+    const host = required('MAILPIT_HOST');
+    const port = Number(data.MAILPIT_PORT);
+    if (!Number.isInteger(port) || port < 1 || port > 65535)
+      issues.push({
+        code: 'custom',
+        path: ['MAILPIT_PORT'],
+        message: 'must be between 1 and 65535',
+      });
+    email = { provider: 'mailpit', from: data.EMAIL_FROM, host, port };
+  } else if (data.EMAIL_PROVIDER === 'resend') {
+    email = { provider: 'resend', from: data.EMAIL_FROM, apiKey: required('RESEND_API_KEY') };
+  } else {
+    email = { provider: 'sendgrid', from: data.EMAIL_FROM, apiKey: required('SENDGRID_API_KEY') };
+  }
+  if (issues.length > 0) throw new ConfigurationError(issues);
+  return email;
 }
 
 export function loadConfig(): AppConfig {
