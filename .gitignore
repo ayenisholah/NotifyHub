@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.vite/
+coverage/
+playwright-report/
+test-results/
+*.log
+notifyhub-engineering-doc.md
+sample/
