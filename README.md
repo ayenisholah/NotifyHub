@@ -2,7 +2,7 @@
 
 NotifyHub is an intentionally engineered multi-channel notification service. The repository is currently at its governance milestone; product code is built one verified task at a time.
 
-[Implementation plan](docs/IMPLEMENTATION_PLAN.md) · [Milestones](docs/MILESTONES.md) · [Progress](docs/PROGRESS.md) · [Engineering specification](docs/engineering-specification.md)
+[Implementation plan](docs/IMPLEMENTATION_PLAN.md) · [Milestones](docs/MILESTONES.md) · [Progress](docs/PROGRESS.md) · [Engineering document](docs/notifyhub-engineering-doc.md)
 
 ## Status
 
