@@ -46,3 +46,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (`npm ci`; Prisma validate/generate; `scripts/verify.ps1`; `bash scripts/verify.sh`; format, lint, strict compilation, build, 9 local Vitest tests, and PostgreSQL 18 GitHub Actions integration tests passed; `npm audit` reported 0 vulnerabilities; `git diff --check`).
 - Next: W1D2-1 — API authentication and request validation.
 - Blockers/notes: generated Prisma client code remains untracked and deterministic. The migration is deployment-ready but was not applied to the VPS; deployment credentials and automation remain a later explicit task.
+
+## 2026-07-12 — W1D2-1
+
+- Did: added an injectable Express 5 application factory for `POST /v1/notify`; constant-time exact bearer authentication before body parsing; strict Zod request validation; stable 400, 401, 413, 422, and sanitized 500 JSON errors; and focused Supertest coverage without startup, persistence, queue, or environment coupling.
+- Verify: PASS (`npm ci`; `scripts/verify.ps1`; `bash scripts/verify.sh`; format, lint, strict compilation, build, and 31 Vitest tests including 22 API tests all passed; `npm audit` reported 0 vulnerabilities; `git diff --check`).
+- Next: W1D2-2 — Persist-first idempotent ingestion.
+- Blockers/notes: the Docker-backed PostgreSQL integration suite remains delegated to GitHub Actions and could not run locally because no container runtime was available. Replay behavior, persistence, and queueing remain intentionally deferred to W1D2-2.
