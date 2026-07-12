@@ -10,4 +10,4 @@
 
 ## Current status
 
-M0 passed on 2026-07-12. `W1D1-1` is the next task; it has not started.
+M0 and M1 passed on 2026-07-12. `W2D1-1` is the next task; it has not started.

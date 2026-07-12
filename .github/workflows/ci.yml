@@ -1,6 +1,11 @@
 name: Verification
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * *'
 
 permissions:
   contents: read
@@ -18,3 +23,17 @@ jobs:
       - run: sh scripts/verify.sh
       - name: Verify PostgreSQL 18 migrations and constraints
         run: npm run test:integration
+
+  reliability:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Kill and restart an in-flight email worker
+        run: sh scripts/kill-test.sh

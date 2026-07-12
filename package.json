@@ -24,6 +24,7 @@
     "postinstall": "npm run prisma:generate",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:kill": "npm run build && vitest run --config vitest.reliability.config.ts",
     "typecheck": "tsc -b --pretty false",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run build && npm test"
   },

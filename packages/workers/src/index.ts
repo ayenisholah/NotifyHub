@@ -78,6 +78,8 @@ export {
 } from './execution-error.js';
 export { recordDeliveryFailure, runClassifiedDelivery } from './retry.js';
 export { parkFailedDelivery } from './dlq.js';
+export { reconcilePersistedWork } from './reconcile.js';
+export type { ReconciliationDependencies, ReconciliationResult } from './reconcile.js';
 export type { DeliveryFailureOutcome } from './retry.js';
 export type {
   HandleSmsDeliveryOptions,
@@ -91,6 +93,7 @@ export type {
   EmailTemplateField,
   EmailTemplateWarning,
   EmailWorker,
+  ChannelWorkerRuntimeOptions,
   HandleEmailDeliveryOptions,
   RenderedEmailTemplate,
   RenderEmailTemplateInput,
