@@ -79,6 +79,16 @@ export {
 export { recordDeliveryFailure, runClassifiedDelivery } from './retry.js';
 export { parkFailedDelivery } from './dlq.js';
 export { reconcilePersistedWork } from './reconcile.js';
+export {
+  createDigestFlushHandler,
+  createDigestFlushWorker,
+  DigestBatchNotFoundError,
+  DigestFlushConsistencyError,
+  DigestFlushError,
+  EmptyDigestBatchError,
+  InvalidDigestBatchError,
+} from './digest.js';
+export type { DigestFlushHandler, DigestFlushResult, DigestFlushWorker } from './digest.js';
 export type { ReconciliationDependencies, ReconciliationResult } from './reconcile.js';
 export type { DeliveryFailureOutcome } from './retry.js';
 export type {
@@ -97,6 +107,8 @@ export type {
   HandleEmailDeliveryOptions,
   RenderedEmailTemplate,
   RenderEmailTemplateInput,
+  DigestRenderContext,
+  DigestRenderItem,
 } from './email.js';
 export type {
   CloseableInboxPublisher,

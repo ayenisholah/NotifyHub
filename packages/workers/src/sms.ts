@@ -77,7 +77,17 @@ export function createSmsDeliveryHandler(
   const execute = async (deliveryId: string): Promise<SmsSendResult> => {
     const delivery = await prisma.delivery.findUnique({
       where: { id: deliveryId },
-      include: { notification: { include: { user: true } } },
+      include: {
+        notification: { include: { user: true } },
+        digestBatch: {
+          include: {
+            items: {
+              orderBy: [{ createdAt: 'asc' }, { notificationId: 'asc' }],
+              include: { notification: true },
+            },
+          },
+        },
+      },
     });
     if (delivery === null) throw new SmsDeliveryNotFoundError(deliveryId);
     if (delivery.channel !== Channel.SMS)
@@ -110,17 +120,26 @@ export function createSmsDeliveryHandler(
       },
     });
     if (template === null) throw new SmsTemplateNotFoundError(delivery.notification.event);
+    if (delivery.digestBatch !== null && template.digestBody === null)
+      throw new SmsDeliveryError(`Digest SMS template has no digest body: ${template.id}`);
+    const user = {
+      id: delivery.notification.user.id,
+      email: delivery.notification.user.email,
+      phone,
+      timezone: delivery.notification.user.timezone,
+    };
+    const digestItems = delivery.digestBatch?.items.map(({ notification, createdAt }) => ({
+      notificationId: notification.id,
+      event: notification.event,
+      payload: notification.payload,
+      createdAt,
+    }));
     const text = renderSmsTemplate({
-      body: template.body,
-      context: {
-        user: {
-          id: delivery.notification.user.id,
-          email: delivery.notification.user.email,
-          phone,
-          timezone: delivery.notification.user.timezone,
-        },
-        payload: delivery.notification.payload,
-      },
+      body: delivery.digestBatch === null ? template.body : template.digestBody!,
+      context:
+        digestItems === undefined
+          ? { user, payload: delivery.notification.payload }
+          : { user, count: digestItems.length, items: digestItems },
       ...(options.onTemplateWarning === undefined ? {} : { onWarning: options.onTemplateWarning }),
     });
 

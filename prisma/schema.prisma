@@ -115,10 +115,12 @@ model Delivery {
   lastError         String?         @map("last_error")
   providerMessageId String?         @map("provider_message_id")
   scheduledFor      DateTime?       @map("scheduled_for") @db.Timestamptz(3)
+  digestBatchId     String?         @unique @map("digest_batch_id") @db.Uuid
   createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
   notification      Notification    @relation(fields: [notificationId], references: [id], onDelete: Cascade)
   events            DeliveryEvent[]
+  digestBatch       DigestBatch?    @relation(fields: [digestBatchId], references: [id], onDelete: SetNull)
 
   @@index([notificationId])
   @@unique([notificationId, channel])
@@ -147,6 +149,7 @@ model DigestBatch {
   status       DigestBatchStatus @default(OPEN)
   user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   items        DigestItem[]
+  delivery     Delivery?
 
   @@index([status, windowEndsAt])
   @@map("digest_batches")

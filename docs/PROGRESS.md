@@ -137,3 +137,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (Prisma generation, format, strict typecheck, build, and 98 local Vitest tests passed; PostgreSQL/Redis coverage includes 20-way batch contention, mixed immediate/digest routing, template constraint enforcement, stable delayed jobs, and reconciliation; container-backed execution remains delegated to GitHub Actions).
 - Next: W2D1-2 — Digest flush worker.
 - Blockers/notes: an open batch remains joinable until the flush worker claims it, so scheduler lag may slightly extend the collection window. Rendering, batch claim, delivery creation, and channel dispatch remain W2D1-2.
+
+## 2026-07-12 — W2D1-2
+
+- Did: added a nullable unique digest-batch delivery relation; atomically claimed open batches and created one queued delivery/event; made flush replay recover channel enqueue failures; added a BullMQ flush worker; and rendered ordered digest items through email and SMS without changing ordinary rendering.
+- Verify: PASS (Prisma generation, format, lint, strict typecheck, build, and local Vitest suite).
+- Next: W2D2-1 — User-scoped inbox REST.
+- Blockers/notes: provider calls remain in channel workers, and digest email intentionally emits plain text because templates expose only one digest body.
