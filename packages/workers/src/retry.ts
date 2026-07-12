@@ -64,6 +64,7 @@ export async function runClassifiedDelivery<T>(
   prisma: PrismaClient,
   deliveryId: string,
   handler: () => Promise<T>,
+  deadLetter?: (error: unknown) => Promise<void>,
 ): Promise<T | undefined> {
   try {
     return await handler();
@@ -71,6 +72,7 @@ export async function runClassifiedDelivery<T>(
     const outcome = await recordDeliveryFailure(prisma, deliveryId, error);
     if (outcome === 'completed') return undefined;
     if (outcome === 'retry') throw error;
+    if (deadLetter !== undefined) await deadLetter(error);
     throw new UnrecoverableError(classifyDeliveryError(error).message);
   }
 }

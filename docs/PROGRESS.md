@@ -116,3 +116,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (format, strict typecheck, build, and 91 local Vitest tests passed; PostgreSQL/Redis integration coverage includes retry timelines, permanent preflight failure, fifth-attempt exhaustion, stable channel job policy, and fail-three-then-succeed execution; container-backed execution remains delegated to GitHub Actions).
 - Next: W1D5-2 — DLQ storage and operator retry.
 - Blockers/notes: W1D5-1 terminates exhausted and permanent deliveries at FAILED. Moving jobs to the dedicated DLQ, listing them, and explicit operator replay remain W1D5-2.
+
+## 2026-07-12 — W1D5-2
+
+- Did: added stable ID-only BullMQ dead-letter jobs backed by authoritative PostgreSQL DLQ rows; idempotent failed-to-DLQ parking; opaque newest-first DLQ pagination; independently operator-key-authenticated inspection and replay endpoints; and a dedicated DLQ-to-queued reset that clears attempts and errors while preserving the historical event timeline. Operator replay removes stale channel/DLQ jobs, creates a fresh five-attempt channel job, and can resume after a database-commit/Redis-enqueue failure.
+- Verify: PASS (format, strict typecheck, build, and 96 local Vitest tests passed; PostgreSQL/Redis integration coverage includes poison parking, listing, repair, requeue, and successful completion; container-backed execution remains delegated to GitHub Actions).
+- Next: W1D5-3 — Worker-kill acceptance test.
+- Blockers/notes: PostgreSQL remains listable if Redis parking fails. W1D5-3 adds the broader reconciliation and process-kill acceptance sweep for arbitrary in-flight drift.

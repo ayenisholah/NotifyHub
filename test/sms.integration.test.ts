@@ -2,15 +2,19 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { Queue } from 'bullmq';
 import { GenericContainer, type StartedTestContainer } from 'testcontainers';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createPersistentDlqHandlers } from '../packages/api/src/index.js';
 import {
   Channel,
   createChannelQueueProducer,
   createDelivery,
+  createDlqProducer,
   createPrismaClient,
   DeliveryStatus,
+  DLQ_QUEUE_NAME,
   type PrismaClient,
 } from '../packages/core/src/index.js';
 import {
@@ -327,6 +331,70 @@ describe.sequential('mock SMS BullMQ worker', () => {
     } finally {
       await worker.close();
       await producer.close();
+    }
+  }, 30_000);
+
+  it('parks a poison job and supports operator repair and replay', async () => {
+    const delivery = await fixture('poison', { phone: null });
+    const redisUrl = `redis://${redis.getHost()}:${redis.getMappedPort(6379)}`;
+    const worker = createSmsWorker(
+      redisUrl,
+      createSmsDeliveryHandler(prisma, createMockSmsProvider({ provider: 'mock', failureRate: 0 })),
+    );
+    const producer = createChannelQueueProducer(redisUrl);
+    const dlqProducer = createDlqProducer(redisUrl);
+    const dlqInspector = new Queue(DLQ_QUEUE_NAME, {
+      connection: { host: redis.getHost(), port: redis.getMappedPort(6379) },
+    });
+    const handlers = createPersistentDlqHandlers(prisma, dlqProducer);
+    try {
+      await producer.enqueue(Channel.SMS, delivery.id);
+      const deadline = Date.now() + 10_000;
+      let persisted = await prisma.delivery.findUniqueOrThrow({ where: { id: delivery.id } });
+      while (persisted.status !== DeliveryStatus.DLQ && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        persisted = await prisma.delivery.findUniqueOrThrow({ where: { id: delivery.id } });
+      }
+      expect(persisted).toMatchObject({ status: DeliveryStatus.DLQ, attempts: 1 });
+      expect(await dlqInspector.getJob(delivery.id)).toMatchObject({
+        id: delivery.id,
+        data: { deliveryId: delivery.id },
+      });
+      await expect(handlers.list({ limit: 10 })).resolves.toMatchObject({
+        items: [{ deliveryId: delivery.id, channel: Channel.SMS, attempts: 1 }],
+      });
+
+      await prisma.user.update({
+        where: { id: 'sms-poison' },
+        data: { phone: '+2348111111111' },
+      });
+      await expect(handlers.retry(delivery.id)).resolves.toEqual({ replayed: false });
+      const sentDeadline = Date.now() + 10_000;
+      persisted = await prisma.delivery.findUniqueOrThrow({ where: { id: delivery.id } });
+      while (persisted.status !== DeliveryStatus.SENT && Date.now() < sentDeadline) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        persisted = await prisma.delivery.findUniqueOrThrow({ where: { id: delivery.id } });
+      }
+      expect(persisted).toMatchObject({ status: DeliveryStatus.SENT, attempts: 1 });
+      expect(await dlqInspector.getJob(delivery.id)).toBeUndefined();
+      const events = await prisma.deliveryEvent.findMany({
+        where: { deliveryId: delivery.id },
+        orderBy: { id: 'asc' },
+      });
+      expect(events.map(({ status }) => status)).toEqual([
+        DeliveryStatus.QUEUED,
+        DeliveryStatus.PROCESSING,
+        DeliveryStatus.FAILED,
+        DeliveryStatus.DLQ,
+        DeliveryStatus.QUEUED,
+        DeliveryStatus.PROCESSING,
+        DeliveryStatus.SENT,
+      ]);
+    } finally {
+      await worker.close();
+      await producer.close();
+      await dlqProducer.close();
+      await dlqInspector.close();
     }
   }, 30_000);
 });
