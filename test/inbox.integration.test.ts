@@ -101,6 +101,8 @@ describe.sequential('persistent inbox handlers', () => {
 
   it('marks all caller-owned unread messages and isolates tenants', async () => {
     const handlers = createPersistentInboxHandlers(prisma, tokenSecret, () => readTime);
+    expect(await handlers.countUnread('user-1')).toBe(3);
+    expect(await handlers.countUnread('user-2')).toBe(0);
     expect(await handlers.list('user-2', { limit: 20 })).toEqual({
       items: [],
       unreadCount: 0,

@@ -36,12 +36,14 @@ export type ListInboxHandler = (
 ) => Promise<InboxListResult>;
 export type ReadInboxMessageHandler = (userId: string, id: string) => Promise<InboxMessage>;
 export type ReadAllInboxHandler = (userId: string) => Promise<InboxReadAllResult>;
+export type CountUnreadInboxHandler = (userId: string) => Promise<number>;
 
 export interface InboxHandlers {
   issueToken: IssueUserTokenHandler;
   list: ListInboxHandler;
   read: ReadInboxMessageHandler;
   readAll: ReadAllInboxHandler;
+  countUnread: CountUnreadInboxHandler;
 }
 
 export class UserNotFoundError extends Error {
@@ -159,6 +161,9 @@ export function createPersistentInboxHandlers(
         });
         return { updatedCount: updated.count, unreadCount };
       });
+    },
+    async countUnread(userId) {
+      return prisma.inboxMessage.count({ where: { userId, readAt: null } });
     },
   };
 }

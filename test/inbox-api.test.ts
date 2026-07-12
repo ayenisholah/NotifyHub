@@ -28,6 +28,7 @@ function setup(overrides: Partial<InboxHandlers> = {}) {
     list: vi.fn(async () => ({ items: [message], unreadCount: 1, nextCursor: null })),
     read: vi.fn(async () => message),
     readAll: vi.fn(async () => ({ updatedCount: 1, unreadCount: 0 })),
+    countUnread: vi.fn(async () => 0),
     ...overrides,
   };
   return {
