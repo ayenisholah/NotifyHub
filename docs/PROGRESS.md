@@ -81,3 +81,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (`scripts/verify.ps1`; `bash scripts/verify.sh`; format, lint, strict compilation, build, and 47 local Vitest tests passed; `npm audit`; `git diff --check`). Docker-backed router integration remains required by GitHub Actions because no local container runtime is installed.
 - Next: W1D3-3 — Quiet-hours scheduling.
 - Blockers/notes: the router deliberately supplies inactive quiet-hours and digest inputs; W1D3-3 and W2D1 activate those branches without changing precedence. Preference strings are interpreted at read time, and routed/no-op results remain immutable across preference changes.
+
+## 2026-07-12 — W1D3-3
+
+- Did: added exported timezone-aware quiet-hours resolution with normal and midnight-crossing minute windows; activated email/SMS scheduling while keeping in-app and critical deliveries immediate; persisted scheduled delivery/event diagnostics; added delayed BullMQ channel jobs from persisted schedule times; preserved stable replay behavior with an injectable router clock; and documented boundary, equal-window, and DST approximation semantics.
+- Verify: PASS (`scripts/verify.ps1`; `bash scripts/verify.sh`; format, lint, strict compilation, build, and 61 local Vitest tests passed; `npm audit`; `git diff --check`). Docker-backed PostgreSQL/Redis quiet-hours and delayed-job integration remains required by GitHub Actions because no local container runtime is installed.
+- Next: W1D4-1 — Restart-safe in-app worker.
+- Blockers/notes: digest evaluation remains inactive until W2D1. Scheduled channel workers may receive a past-due job immediately after queue recovery; they must continue to treat PostgreSQL as source of truth.

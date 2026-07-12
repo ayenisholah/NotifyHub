@@ -263,6 +263,8 @@ Order of evaluation in the router, first match wins per channel:
 
 Every skip/deferral is recorded in `delivery_events.detail` — "why didn't the user get it?" is always answerable from the dashboard.
 
+Quiet-hour boundaries are start-inclusive and end-exclusive. Equal start/end values disable the window rather than representing a 24-hour mute. Window-end conversion uses the platform IANA timezone database; transitions through ambiguous or nonexistent DST wall times are an explicit approximation and may resolve to the adjacent valid offset.
+
 ### 6.5 Digest batching
 
 - First digestible event: insert `digest_batches` row (`open`, `window_ends_at = now + 10 min` — per-template configurable) + a BullMQ **delayed job** `digest:flush {batchId}` with exactly that delay; subsequent events insert `digest_items` into the open batch (the partial unique index makes open-batch lookup race-safe: on conflict, join the winner).

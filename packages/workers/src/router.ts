@@ -1,13 +1,15 @@
 import { Worker } from 'bullmq';
 
 import {
+  Channel,
   createDelivery,
   createRedisConnection,
+  DeliveryStatus,
   evaluateRouting,
   NotificationStatus,
   resolvePreference,
+  resolveQuietHours,
   ROUTE_QUEUE_NAME,
-  type Channel,
   type ChannelJobEnqueuer,
   type PrismaClient,
   type RouteJobData,
@@ -44,6 +46,7 @@ export function createRouteNotificationHandler(
   prisma: PrismaClient,
   channelJobs: ChannelJobEnqueuer,
   providers: ProviderMapping,
+  now: () => Date = () => new Date(),
 ): RouteNotificationHandler {
   for (const [channel, provider] of Object.entries(providers)) {
     if (provider.trim() === '') throw new Error(`Provider must not be empty for ${channel}`);
@@ -57,7 +60,11 @@ export function createRouteNotificationHandler(
           include: {
             deliveries: { orderBy: { channel: 'asc' } },
             user: {
-              select: { preferences: { select: { channel: true, category: true, enabled: true } } },
+              select: {
+                timezone: true,
+                quietHours: { select: { startMinute: true, endMinute: true } },
+                preferences: { select: { channel: true, category: true, enabled: true } },
+              },
             },
           },
         });
@@ -95,19 +102,33 @@ export function createRouteNotificationHandler(
           !Array.isArray(notification.payload) &&
           'critical' in notification.payload &&
           notification.payload.critical === true;
+        const routedAt = now();
         const enabledTemplates = templates.flatMap((template) => {
           const preference = resolvePreference(
             notification.event,
             notification.user.preferences.filter(({ channel }) => channel === template.channel),
           );
+          const quietHours =
+            !preference.enabled ||
+            critical ||
+            template.channel === Channel.IN_APP ||
+            notification.user.quietHours === null
+              ? { active: false as const, scheduledFor: null }
+              : resolveQuietHours({
+                  now: routedAt,
+                  timezone: notification.user.timezone,
+                  ...notification.user.quietHours,
+                });
           const decision = evaluateRouting({
             templatePresent: true,
             preferenceEnabled: preference.enabled,
             critical,
-            quietHoursActive: false,
+            quietHoursActive: quietHours.active,
             digestEnabled: false,
           });
-          return decision.outcome === 'skip' ? [] : [{ template, preference, decision }];
+          return decision.outcome === 'skip'
+            ? []
+            : [{ template, preference, decision, scheduledFor: quietHours.scheduledFor }];
         });
         if (enabledTemplates.length === 0) {
           const updated = await transaction.notification.updateMany({
@@ -126,15 +147,26 @@ export function createRouteNotificationHandler(
         if (updated.count !== 1) return { retry: true };
 
         const deliveries = [];
-        for (const { template, preference, decision } of enabledTemplates) {
+        for (const { template, preference, decision, scheduledFor } of enabledTemplates) {
+          const scheduled = decision.outcome === 'schedule';
+          if (scheduled && scheduledFor === null) throw new RouterConflictError(notificationId);
           const delivery = await createDelivery(transaction, {
             notificationId,
             channel: template.channel,
             provider: providers[template.channel],
+            ...(scheduled
+              ? { initialStatus: DeliveryStatus.SCHEDULED, scheduledFor: scheduledFor! }
+              : { initialStatus: DeliveryStatus.QUEUED }),
             detail: {
               reason: decision.reason,
               locale: 'en',
               preferenceCategory: preference.matchedCategory,
+              ...(scheduled
+                ? {
+                    timezone: notification.user.timezone,
+                    scheduledFor: scheduledFor!.toISOString(),
+                  }
+                : {}),
             },
           });
           deliveries.push(delivery);
@@ -150,10 +182,14 @@ export function createRouteNotificationHandler(
         const deliveries = await prisma.delivery.findMany({
           where: { id: { in: prepared.deliveryIds } },
           orderBy: { channel: 'asc' },
-          select: { id: true, channel: true },
+          select: { id: true, channel: true, scheduledFor: true },
         });
         for (const delivery of deliveries) {
-          await channelJobs.enqueue(delivery.channel, delivery.id);
+          await channelJobs.enqueue(
+            delivery.channel,
+            delivery.id,
+            delivery.scheduledFor ?? undefined,
+          );
         }
       }
       return prepared;

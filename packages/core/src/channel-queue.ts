@@ -15,7 +15,7 @@ export interface ChannelJobData {
 }
 
 export interface ChannelJobEnqueuer {
-  enqueue(channel: Channel, deliveryId: string): Promise<void>;
+  enqueue(channel: Channel, deliveryId: string, scheduledFor?: Date): Promise<void>;
 }
 
 export interface ChannelQueueProducer extends ChannelJobEnqueuer {
@@ -32,10 +32,16 @@ export function createChannelQueueProducer(redisUrl: string): ChannelQueueProduc
   );
 
   return {
-    async enqueue(channel, deliveryId) {
+    async enqueue(channel, deliveryId, scheduledFor) {
       const queue = queues.get(channel);
       if (queue === undefined) throw new Error(`Unsupported channel: ${channel}`);
-      await queue.add(CHANNEL_JOB_NAME, { deliveryId }, { jobId: deliveryId });
+      const delay =
+        scheduledFor === undefined ? undefined : Math.max(0, scheduledFor.getTime() - Date.now());
+      await queue.add(
+        CHANNEL_JOB_NAME,
+        { deliveryId },
+        { jobId: deliveryId, ...(delay === undefined ? {} : { delay }) },
+      );
     },
     async close() {
       await Promise.all([...queues.values()].map(async (queue) => queue.close()));
