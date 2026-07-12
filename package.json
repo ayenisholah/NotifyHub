@@ -10,23 +10,33 @@
   "workspaces": [
     "packages/*"
   ],
+  "overrides": {
+    "@hono/node-server": "1.19.13"
+  },
   "scripts": {
     "build": "tsc -b",
     "clean": "tsc -b --clean",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "postinstall": "npm run prisma:generate",
     "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc -b --pretty false",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run build && npm test"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",
+    "@testcontainers/postgresql": "^12.0.4",
     "@types/node": "^22.15.34",
+    "@types/pg": "^8.20.0",
     "eslint": "^9.30.1",
     "eslint-config-prettier": "^10.1.5",
     "globals": "^16.2.0",
     "prettier": "^3.6.2",
+    "prisma": "^7.8.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.35.1",
     "vitest": "^3.2.4"

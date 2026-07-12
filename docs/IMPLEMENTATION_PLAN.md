@@ -18,7 +18,7 @@ Tasks are executed top to bottom. The first unchecked box is the current task. D
   - Done when: Node 22 npm workspaces for core/API/workers compile strictly and a first unit test passes.
 - [x] **W1D1-2 — Validated configuration**
   - Done when: valid, missing, and malformed environment tests pass.
-- [ ] **W1D1-3 — Prisma schema and migration**
+- [x] **W1D1-3 — Prisma schema and migration**
   - Done when: the complete core schema migrates onto clean PostgreSQL and uniqueness constraints are tested.
 
 ### Day 2 — Ingestion and state

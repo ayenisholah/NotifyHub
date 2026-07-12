@@ -39,3 +39,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (`npm ci`; `scripts/verify.ps1`; `bash scripts/verify.sh`; format check, lint, strict compilation, build, and 9 Vitest tests all passed; npm audit reported 0 vulnerabilities; `git diff --check`).
 - Next: W1D1-3 — Prisma schema and migration.
 - Blockers/notes: secrets remain required in every environment. No dotenv, database client, Redis connection, provider variables, or service boot process was added.
+
+## 2026-07-12 — W1D1-3
+
+- Did: added Prisma 7 with the PostgreSQL driver adapter; modeled the complete core schema; committed the initial migration with check, partial-open-digest, and unread-inbox indexes; exported a lazy client factory; added clean-database PostgreSQL 18 migration and uniqueness tests; and moved Docker-backed verification to GitHub Actions while keeping local verification Docker-free.
+- Verify: PASS (`npm ci`; Prisma validate/generate; `scripts/verify.ps1`; `bash scripts/verify.sh`; format, lint, strict compilation, build, 9 local Vitest tests, and PostgreSQL 18 GitHub Actions integration tests passed; `npm audit` reported 0 vulnerabilities; `git diff --check`).
+- Next: W1D2-1 — API authentication and request validation.
+- Blockers/notes: generated Prisma client code remains untracked and deterministic. The migration is deployment-ready but was not applied to the VPS; deployment credentials and automation remain a later explicit task.
