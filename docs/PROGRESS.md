@@ -165,3 +165,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (`npm run verify`; format, lint, strict typecheck, workspace build, 133 repository tests, and 5 widget tests passed; clean Vite output contained runnable ESM, declarations, source map, and `dist/styles.css`; `npm pack --dry-run` contained every exported path; built React and vanilla exports imported successfully).
 - Next: W2D3-2 — Accessible neutral demo host.
 - Blockers/notes: advanced visual customization, isolation, and the fake SaaS host remain scoped to W2D3-2. The widget treats REST and WebSocket unread values as authoritative and polls every 30 seconds only while realtime is disconnected.
+
+## 2026-07-13 — W2D3-2
+
+- Did: added the accessible neutral Acme Projects demo host with a server-side user-token bootstrap, same-origin inbox REST and WebSocket proxies, an Nginx configuration template, and production-build smoke coverage; added the project overview; and verified the remote GitHub repository and demo-host access guardrails.
+- Verify: PASS (`npm run verify`; production demo smoke; `git diff --check`; credential scan; key-only VPS SSH; GitHub visibility, access, `main` ruleset, production environment, reviewer, branch policy, and secret-name queries).
+- Next: W2D3-3 — Sanitized public dashboard.
+- Blockers/notes: no deployment claim is made. Compose topology, TLS, deployment automation, and the operator dashboard remain deferred to their ordered roadmap tasks.
