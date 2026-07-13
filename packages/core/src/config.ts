@@ -18,6 +18,7 @@ const environmentSchema = z.object({
   API_KEY: secretSchema,
   OPERATOR_KEY: secretSchema,
   TOKEN_SECRET: secretSchema,
+  DEMO_USER_ID: z.string().trim().min(1, 'is required').max(128, 'must be at most 128 characters'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce
     .number('must be numeric')
@@ -54,6 +55,7 @@ export type AppConfig = Readonly<{
   apiKey: string;
   operatorKey: string;
   tokenSecret: string;
+  demoUserId: string;
   nodeEnv: 'development' | 'test' | 'production';
   port: number;
   logLevel: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal' | 'silent';
@@ -85,6 +87,7 @@ export function parseConfig(env: Readonly<Record<string, string | undefined>>): 
     apiKey: result.data.API_KEY,
     operatorKey: result.data.OPERATOR_KEY,
     tokenSecret: result.data.TOKEN_SECRET,
+    demoUserId: result.data.DEMO_USER_ID,
     nodeEnv: result.data.NODE_ENV,
     port: result.data.PORT,
     logLevel: result.data.LOG_LEVEL,

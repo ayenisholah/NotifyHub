@@ -81,8 +81,9 @@ The project currently includes:
 - Notification digests
 - A real-time inbox widget
 - The Acme Projects demonstration site
+- A sanitized public lifecycle and dead-letter dashboard scoped to a synthetic demo user
 
-The planned next major product feature is an operator dashboard for viewing notification statuses, delivery timelines, failures, and retry controls. Later work covers operational health checks, Docker Compose packaging, browser testing, and production deployment.
+The next planned task adds operational health checks, readiness, metrics, and process-wide shutdown. Later work covers Docker Compose packaging, browser testing, performance evidence, and production deployment.
 
 ## Summary
 

@@ -1,4 +1,6 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { access } from 'node:fs/promises';
+import path from 'node:path';
 
 import express, {
   type ErrorRequestHandler,
@@ -9,12 +11,24 @@ import express, {
 import { z } from 'zod';
 
 import {
+  Channel,
+  DeliveryStatus,
   NotificationStatus,
   packageIdentity as corePackage,
   type Prisma,
   type PrismaClient,
 } from '@notifyhub/core';
 
+import {
+  DASHBOARD_ERROR_CLASSIFICATIONS,
+  DASHBOARD_EVENT_REASONS,
+  DashboardNotificationNotFoundError,
+  decodeDashboardDlqCursor,
+  decodeDashboardNotificationCursor,
+  InvalidDashboardDlqCursorError,
+  InvalidDashboardNotificationCursorError,
+  type DashboardHandlers,
+} from './dashboard.js';
 import {
   DlqNotFoundError,
   DlqRetryConflictError,
@@ -24,6 +38,39 @@ import {
 import { InboxMessageNotFoundError, UserNotFoundError, type InboxHandlers } from './inbox.js';
 import { InvalidUserTokenError, verifyUserToken } from './user-token.js';
 
+export {
+  createPersistentDashboardHandlers,
+  DASHBOARD_ERROR_CLASSIFICATIONS,
+  DASHBOARD_EVENT_REASONS,
+  DashboardNotificationNotFoundError,
+  decodeDashboardDlqCursor,
+  decodeDashboardNotificationCursor,
+  encodeDashboardDlqCursor,
+  encodeDashboardNotificationCursor,
+  InvalidDashboardDlqCursorError,
+  InvalidDashboardNotificationCursorError,
+} from './dashboard.js';
+export type {
+  DashboardDeliveryDetail,
+  DashboardDeliveryStatus,
+  DashboardDlqCursor,
+  DashboardDlqItem,
+  DashboardDlqListResult,
+  DashboardErrorClassification,
+  DashboardEventReason,
+  DashboardHandlers,
+  DashboardNotificationCursor,
+  DashboardNotificationDetail,
+  DashboardNotificationListItem,
+  DashboardNotificationListResult,
+  DashboardSummary,
+  DashboardTimelineEvent,
+  GetDashboardNotificationHandler,
+  GetDashboardSummaryHandler,
+  ListDashboardDlqHandler,
+  ListDashboardNotificationsHandler,
+  PersistentDashboardOptions,
+} from './dashboard.js';
 export {
   createPersistentDlqHandlers,
   decodeDlqCursor,
@@ -90,6 +137,82 @@ const notifyRequestSchema = z
 
 export type NotifyRequest = z.infer<typeof notifyRequestSchema>;
 
+const dashboardEventReasonSchema = z.enum(DASHBOARD_EVENT_REASONS).nullable();
+const dashboardErrorClassificationSchema = z.enum(DASHBOARD_ERROR_CLASSIFICATIONS).nullable();
+const dashboardTimestampSchema = z.string().datetime();
+const dashboardDeliveryStatusSchema = z.object({
+  deliveryId: z.string().uuid(),
+  channel: z.nativeEnum(Channel),
+  status: z.nativeEnum(DeliveryStatus),
+  attempts: z.number().int().nonnegative(),
+  createdAt: dashboardTimestampSchema,
+  updatedAt: dashboardTimestampSchema,
+});
+const dashboardTimelineEventSchema = z.object({
+  status: z.nativeEnum(DeliveryStatus),
+  createdAt: dashboardTimestampSchema,
+  reason: dashboardEventReasonSchema,
+  errorClassification: dashboardErrorClassificationSchema,
+});
+const dashboardNotificationBaseSchema = z.object({
+  notificationId: z.string().uuid(),
+  event: z.string().min(1).max(128),
+  status: z.nativeEnum(NotificationStatus),
+  reason: dashboardEventReasonSchema,
+  createdAt: dashboardTimestampSchema,
+});
+const dashboardNotificationListItemSchema = dashboardNotificationBaseSchema.extend({
+  deliveries: z.array(dashboardDeliveryStatusSchema),
+});
+const dashboardNotificationDetailSchema = dashboardNotificationBaseSchema.extend({
+  deliveries: z.array(
+    dashboardDeliveryStatusSchema.extend({ timeline: z.array(dashboardTimelineEventSchema) }),
+  ),
+});
+const dashboardSummarySchema = z.object({
+  sentToday: z.number().int().nonnegative(),
+  inFlight: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+  dlq: z.number().int().nonnegative(),
+});
+const dashboardNotificationCursorResponseSchema = z.string().refine((cursor) => {
+  try {
+    decodeDashboardNotificationCursor(cursor);
+    return true;
+  } catch {
+    return false;
+  }
+});
+const dashboardDlqCursorResponseSchema = z.string().refine((cursor) => {
+  try {
+    decodeDashboardDlqCursor(cursor);
+    return true;
+  } catch {
+    return false;
+  }
+});
+const dashboardNotificationListResultSchema = z.object({
+  items: z.array(dashboardNotificationListItemSchema),
+  nextCursor: dashboardNotificationCursorResponseSchema.nullable(),
+});
+const dashboardDlqListResultSchema = z.object({
+  items: z.array(
+    z.object({
+      deliveryId: z.string().uuid(),
+      notificationId: z.string().uuid(),
+      event: z.string().min(1).max(128),
+      channel: z.nativeEnum(Channel),
+      status: z.literal(DeliveryStatus.DLQ),
+      attempts: z.number().int().nonnegative(),
+      createdAt: dashboardTimestampSchema,
+      updatedAt: dashboardTimestampSchema,
+      reason: dashboardEventReasonSchema,
+      errorClassification: dashboardErrorClassificationSchema,
+    }),
+  ),
+  nextCursor: dashboardDlqCursorResponseSchema.nullable(),
+});
+
 export interface NotifyResult {
   notificationId: string;
   replayed: boolean;
@@ -142,6 +265,8 @@ export function createPersistentNotifyHandler(
 export interface CreateAppOptions {
   apiKey: string;
   notify: NotifyHandler;
+  dashboard?: DashboardHandlers;
+  dashboardAssetsDirectory?: string;
   dlq?: { operatorKey: string; list: ListDlqHandler; retry: RetryDlqHandler };
   inbox?: InboxHandlers & { tokenSecret: string };
 }
@@ -255,6 +380,110 @@ export function createApp(options: CreateAppOptions): express.Express {
       response.status(result.replayed ? 200 : 202).json({ notificationId: result.notificationId });
     },
   );
+
+  if (options.dashboard !== undefined) {
+    app.use('/v1/dashboard', (_request, response, next) => {
+      response.set('Cache-Control', 'no-store');
+      next();
+    });
+
+    app.get('/v1/dashboard/summary', async (_request, response) => {
+      response.json(dashboardSummarySchema.parse(await options.dashboard!.summary()));
+    });
+
+    app.get('/v1/dashboard/notifications', async (request, response) => {
+      const parsed = z
+        .object({
+          limit: z.coerce.number().int().min(1).max(100).default(20),
+          cursor: z.string().min(1).optional(),
+        })
+        .strict()
+        .safeParse(request.query);
+      if (!parsed.success) {
+        response.status(422).json({
+          error: { code: 'validation_error', message: 'Invalid dashboard notifications query' },
+        });
+        return;
+      }
+      try {
+        response.json(
+          dashboardNotificationListResultSchema.parse(
+            await options.dashboard!.listNotifications({
+              limit: parsed.data.limit,
+              ...(parsed.data.cursor === undefined ? {} : { cursor: parsed.data.cursor }),
+            }),
+          ),
+        );
+      } catch (error) {
+        if (error instanceof InvalidDashboardNotificationCursorError) {
+          response.status(422).json({
+            error: { code: 'validation_error', message: 'Invalid dashboard notification cursor' },
+          });
+          return;
+        }
+        throw error;
+      }
+    });
+
+    app.get('/v1/dashboard/notifications/:id', async (request, response) => {
+      const parsed = z.string().uuid().safeParse(request.params.id);
+      if (!parsed.success) {
+        response.status(422).json({
+          error: { code: 'validation_error', message: 'Invalid dashboard notification ID' },
+        });
+        return;
+      }
+      try {
+        response.json(
+          dashboardNotificationDetailSchema.parse(
+            await options.dashboard!.getNotification(parsed.data),
+          ),
+        );
+      } catch (error) {
+        if (error instanceof DashboardNotificationNotFoundError) {
+          response.status(404).json({
+            error: { code: 'not_found', message: 'Dashboard notification not found' },
+          });
+          return;
+        }
+        throw error;
+      }
+    });
+
+    app.get('/v1/dashboard/dlq', async (request, response) => {
+      const parsed = z
+        .object({
+          limit: z.coerce.number().int().min(1).max(100).default(20),
+          cursor: z.string().min(1).optional(),
+        })
+        .strict()
+        .safeParse(request.query);
+      if (!parsed.success) {
+        response.status(422).json({
+          error: { code: 'validation_error', message: 'Invalid dashboard DLQ query' },
+        });
+        return;
+      }
+      try {
+        response.json(
+          dashboardDlqListResultSchema.parse(
+            await options.dashboard!.listDlq({
+              limit: parsed.data.limit,
+              ...(parsed.data.cursor === undefined ? {} : { cursor: parsed.data.cursor }),
+            }),
+          ),
+        );
+      } catch (error) {
+        if (error instanceof InvalidDashboardDlqCursorError) {
+          response.status(422).json({
+            error: { code: 'validation_error', message: 'Invalid dashboard DLQ cursor' },
+          });
+          return;
+        }
+        throw error;
+      }
+    });
+  }
 
   if (options.inbox !== undefined) {
     const userAuth = authenticateUser(options.inbox.tokenSecret);
@@ -398,6 +627,42 @@ export function createApp(options: CreateAppOptions): express.Express {
         }
       },
     );
+  }
+
+  if (options.dashboardAssetsDirectory !== undefined) {
+    const staticDirectory = path.resolve(options.dashboardAssetsDirectory);
+    const indexFile = path.join(staticDirectory, 'index.html');
+    app.use(
+      '/dashboard',
+      express.static(staticDirectory, {
+        index: false,
+        redirect: false,
+        maxAge: '1y',
+        immutable: true,
+        setHeaders(response, fileName) {
+          if (path.resolve(fileName) === indexFile) {
+            response.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          }
+        },
+      }),
+    );
+    app.get(/^\/dashboard(?:\/.*)?$/, async (_request, response, next) => {
+      try {
+        await access(indexFile);
+        response.set('Cache-Control', 'no-cache, no-store, must-revalidate').sendFile(indexFile);
+      } catch (error) {
+        if (
+          error !== null &&
+          typeof error === 'object' &&
+          'code' in error &&
+          error.code === 'ENOENT'
+        ) {
+          response.status(503).type('text/plain').send('Dashboard bundle is unavailable.');
+          return;
+        }
+        next(error);
+      }
+    });
   }
 
   app.use(errorHandler);

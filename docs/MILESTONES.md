@@ -10,4 +10,4 @@
 
 ## Current status
 
-M0, M1, and M2 passed on 2026-07-12. `W2D3-2` is complete; `W2D3-3` is the next task.
+M0, M1, and M2 passed on 2026-07-12. `W2D3-3` is complete; `W2D4-1` is the next task.
