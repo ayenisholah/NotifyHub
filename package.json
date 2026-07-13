@@ -14,19 +14,19 @@
     "@hono/node-server": "1.19.13"
   },
   "scripts": {
-    "build": "tsc -b && npm run build -w @notifyhub/widget && npm run build -w @notifyhub/demo-host",
-    "clean": "tsc -b --clean",
+    "build": "tsc -b && npm run build -w @notifyhub/widget && npm run build -w @notifyhub/demo-host && npm run build -w @notifyhub/dashboard",
+    "clean": "tsc -b --clean && npm run clean -w @notifyhub/dashboard",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "prisma:generate": "prisma generate",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "postinstall": "npm run prisma:generate",
-    "test": "vitest run && vitest run --config vitest.widget.config.ts && npm test -w @notifyhub/demo-host",
+    "test": "vitest run && vitest run --config vitest.widget.config.ts && npm test -w @notifyhub/demo-host && npm test -w @notifyhub/dashboard",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:kill": "npm run build && vitest run --config vitest.reliability.config.ts",
-    "typecheck": "tsc -b --pretty false && npm run typecheck -w @notifyhub/widget && npm run build -w @notifyhub/widget && npm run typecheck -w @notifyhub/demo-host",
-    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run build && npm run smoke -w @notifyhub/demo-host && npm test"
+    "typecheck": "tsc -b --pretty false && npm run typecheck -w @notifyhub/widget && npm run build -w @notifyhub/widget && npm run typecheck -w @notifyhub/demo-host && npm run typecheck -w @notifyhub/dashboard",
+    "verify": "npm run clean && npm run format:check && npm run lint && npm run typecheck && npm run build && npm run smoke -w @notifyhub/demo-host && npm run smoke -w @notifyhub/dashboard && npm test"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",

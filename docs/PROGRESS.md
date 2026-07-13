@@ -172,3 +172,10 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Verify: PASS (`npm run verify`; production demo smoke; `git diff --check`; credential scan; key-only VPS SSH; GitHub visibility, access, `main` ruleset, production environment, reviewer, branch policy, and secret-name queries).
 - Next: W2D3-3 — Sanitized public dashboard.
 - Blockers/notes: no deployment claim is made. Compose topology, TLS, deployment automation, and the operator dashboard remain deferred to their ordered roadmap tasks.
+
+## 2026-07-13 — W2D3-3
+
+- Did: added synthetic-demo-user-scoped public dashboard queries and routes; a responsive dark React dashboard with sanitized counters, opaque notification/DLQ pagination, per-channel timelines, visibility-aware polling, and accessible loading, error, empty, focus, and status behavior; memory-only operator-key unlocking for protected DLQ retries; optional `/dashboard` static serving; and production artifact, API, persistence, and component coverage.
+- Verify: PASS (fresh `npm ci`; `npm run verify`; format, lint, strict typecheck, clean workspace builds, demo/dashboard production smokes, 160 core/API tests, 5 widget tests, 6 demo-host tests, and 20 dashboard tests; `npm audit` reported 0 vulnerabilities; `git diff --check`; credential scan; and the clean-checkout GitHub Actions run including 62 PostgreSQL/Redis integration tests).
+- Next: W2D4-1 — Health, readiness, metrics, shutdown.
+- Blockers/notes: public reads remain restricted to the configured synthetic demo user and expose only allowlisted lifecycle metadata. The operator key is never persisted or included in public API state. This host has no container runtime, so the Docker-capable Actions job is authoritative for integration execution. Health checks, metrics, process-wide shutdown, Compose, TLS, browser suites, and deployment remain deferred to their ordered tasks.

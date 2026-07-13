@@ -13,6 +13,7 @@ const validEnvironment = {
   API_KEY: 'api-key-for-local-development-only',
   OPERATOR_KEY: 'operator-key-for-local-development',
   TOKEN_SECRET: 'token-secret-for-local-development-',
+  DEMO_USER_ID: 'synthetic-demo-user',
   NODE_ENV: 'test',
   PORT: '8080',
   LOG_LEVEL: 'debug',
@@ -38,6 +39,7 @@ describe('parseConfig', () => {
       apiKey: validEnvironment.API_KEY,
       operatorKey: validEnvironment.OPERATOR_KEY,
       tokenSecret: validEnvironment.TOKEN_SECRET,
+      demoUserId: validEnvironment.DEMO_USER_ID,
       nodeEnv: 'test',
       port: 8080,
       logLevel: 'debug',
@@ -59,6 +61,7 @@ describe('parseConfig', () => {
       API_KEY: validEnvironment.API_KEY,
       OPERATOR_KEY: validEnvironment.OPERATOR_KEY,
       TOKEN_SECRET: validEnvironment.TOKEN_SECRET,
+      DEMO_USER_ID: validEnvironment.DEMO_USER_ID,
       EMAIL_PROVIDER: validEnvironment.EMAIL_PROVIDER,
       EMAIL_FROM: validEnvironment.EMAIL_FROM,
       MAILPIT_HOST: validEnvironment.MAILPIT_HOST,
@@ -92,6 +95,7 @@ describe('parseConfig', () => {
       'API_KEY',
       'OPERATOR_KEY',
       'TOKEN_SECRET',
+      'DEMO_USER_ID',
       'EMAIL_PROVIDER',
       'EMAIL_FROM',
       'SMS_PROVIDER',
@@ -117,6 +121,17 @@ describe('parseConfig', () => {
     expect(() => parseConfig({ ...validEnvironment, SMS_PROVIDER: 'twilio' })).toThrow(
       /SMS_PROVIDER/,
     );
+  });
+
+  it('validates and trims the synthetic demo user scope', () => {
+    expect(parseConfig({ ...validEnvironment, DEMO_USER_ID: '  demo-user  ' })).toMatchObject({
+      demoUserId: 'demo-user',
+    });
+    for (const demoUserId of ['', ' '.repeat(3), 'x'.repeat(129)]) {
+      expect(() => parseConfig({ ...validEnvironment, DEMO_USER_ID: demoUserId })).toThrow(
+        /DEMO_USER_ID/,
+      );
+    }
   });
 
   it('selects hosted providers and requires only their credential', () => {
