@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-14T17:47:31.480Z",
+  "kind": "measured",
+  "runId": "20260714t173441z-a9795f1-10k",
+  "commitSha": "a9795f1e6ed92ed4e99e70a17c0d6f18b1b6320e",
+  "passed": true,
+  "failures": [],
+  "configuration": {
+    "notificationCount": 10000,
+    "userCount": 100,
+    "targetRatePerSecond": 200,
+    "concurrency": 50,
+    "timeoutSeconds": 900,
+    "digestPercent": 20,
+    "criticalPercent": 5,
+    "mockSmsFailureRate": 0.05
+  },
+  "ingestion": {
+    "requested": 10000,
+    "accepted": 10000,
+    "httpFailures": 0,
+    "uniqueNotificationIds": 10000,
+    "durationSeconds": 50.01,
+    "acceptedPerSecond": 199.96,
+    "latencyMilliseconds": {
+      "p50": 8.86,
+      "p95": 62.51,
+      "p99": 143.85,
+      "maximum": 350.42
+    }
+  },
+  "pipeline": {
+    "durationSeconds": 451.47,
+    "notificationsPerMinute": 1328.99,
+    "projectedNotificationsPerDay": 1913747,
+    "snapshot": {
+      "notifications": {
+        "ROUTED": 9500,
+        "NO_OP": 500
+      },
+      "deliveries": {
+        "EMAIL": {
+          "SENT": 6848
+        },
+        "IN_APP": {
+          "SENT": 9500
+        },
+        "SMS": {
+          "SENT": 8000
+        }
+      },
+      "deliveryCount": 24348,
+      "retries": 408,
+      "digestBatches": {
+        "FLUSHED": 48
+      },
+      "digestItems": 1200,
+      "inboxMessages": 9500,
+      "queues": {
+        "notification-route": {
+          "waiting": 0,
+          "active": 0,
+          "delayed": 0,
+          "failed": 0,
+          "completed": 10000,
+          "paused": 0
+        },
+        "send-email": {
+          "waiting": 0,
+          "active": 0,
+          "delayed": 0,
+          "failed": 0,
+          "completed": 6848,
+          "paused": 0
+        },
+        "send-sms": {
+          "waiting": 0,
+          "active": 0,
+          "delayed": 0,
+          "failed": 0,
+          "completed": 8000,
+          "paused": 0
+        },
+        "send-inapp": {
+          "waiting": 0,
+          "active": 0,
+          "delayed": 0,
+          "failed": 0,
+          "completed": 9500,
+          "paused": 0
+        },
+        "digest-flush": {
+          "waiting": 0,
+          "active": 0,
+          "delayed": 0,
+          "failed": 0,
+          "completed": 48,
+          "paused": 0
+        },
+        "dlq": {
+          "waiting": 0,
+          "active": 0,
+          "delayed": 0,
+          "failed": 0,
+          "completed": 0,
+          "paused": 0
+        }
+      },
+      "mailpitMessages": 6848
+    }
+  },
+  "environment": {
+    "node": "v22.23.1",
+    "platform": "linux",
+    "architecture": "x64",
+    "logicalCpuCount": 4,
+    "totalMemoryBytes": 7618351104
+  },
+  "reliabilityRunUrl": "https://github.com/ayenisholah/NotifyHub/actions/runs/29351464129",
+  "productionHealth": {
+    "before": true,
+    "after": true
+  }
+}
