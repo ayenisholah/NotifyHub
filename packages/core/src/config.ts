@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 const secretSchema = z.string().min(32, 'must contain at least 32 characters');
 
+const localWebSocketOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000'] as const;
+
 const environmentSchema = z.object({
   DATABASE_URL: z
     .string()
@@ -27,6 +29,7 @@ const environmentSchema = z.object({
     .max(65535, 'must be between 1 and 65535')
     .default(4000),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']).default('info'),
+  WS_ALLOWED_ORIGINS: z.string().optional(),
   EMAIL_PROVIDER: z.enum(['mailpit', 'resend', 'sendgrid']),
   EMAIL_FROM: z.string().min(1, 'is required'),
   MAILPIT_HOST: z.string().optional(),
@@ -59,6 +62,7 @@ export type AppConfig = Readonly<{
   nodeEnv: 'development' | 'test' | 'production';
   port: number;
   logLevel: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal' | 'silent';
+  webSocketAllowedOrigins: readonly string[];
   email: EmailConfig;
   sms: SmsConfig;
 }>;
@@ -71,6 +75,40 @@ export class ConfigurationError extends Error {
     super(`Invalid configuration:\n- ${details.join('\n- ')}`);
     this.name = 'ConfigurationError';
   }
+}
+
+function parseWebSocketOrigins(value: string | undefined, nodeEnv: string): readonly string[] {
+  if ((value === undefined || value.trim() === '') && nodeEnv !== 'production') {
+    return localWebSocketOrigins;
+  }
+  if (value === undefined || value.trim() === '') {
+    throw new ConfigurationError([
+      { code: 'custom', path: ['WS_ALLOWED_ORIGINS'], message: 'is required in production' },
+    ]);
+  }
+  const origins = [...new Set(value.split(',').map((origin) => origin.trim()))];
+  const issues: z.core.$ZodIssue[] = [];
+  for (const origin of origins) {
+    try {
+      const url = new URL(origin);
+      if (
+        !['http:', 'https:'].includes(url.protocol) ||
+        url.origin !== origin ||
+        url.username !== '' ||
+        url.password !== ''
+      ) {
+        throw new TypeError('invalid origin');
+      }
+    } catch {
+      issues.push({
+        code: 'custom',
+        path: ['WS_ALLOWED_ORIGINS'],
+        message: `contains an invalid origin: ${origin || '<empty>'}`,
+      });
+    }
+  }
+  if (issues.length > 0) throw new ConfigurationError(issues);
+  return Object.freeze(origins);
 }
 
 export function parseConfig(env: Readonly<Record<string, string | undefined>>): AppConfig {
@@ -91,6 +129,10 @@ export function parseConfig(env: Readonly<Record<string, string | undefined>>): 
     nodeEnv: result.data.NODE_ENV,
     port: result.data.PORT,
     logLevel: result.data.LOG_LEVEL,
+    webSocketAllowedOrigins: parseWebSocketOrigins(
+      result.data.WS_ALLOWED_ORIGINS,
+      result.data.NODE_ENV,
+    ),
     email: Object.freeze(email),
     sms: Object.freeze({
       provider: result.data.SMS_PROVIDER,

@@ -25,5 +25,6 @@
 - Added a packable React and vanilla DOM inbox widget with validated REST and WebSocket loading, cursor pagination, optimistic read actions, reconnect polling fallback, accessible neutral UI, and external React peers.
 - Added the accessible neutral Acme Projects demo host with server-side token bootstrap, same-origin inbox REST and WebSocket proxies, an Nginx configuration template, and production-build smoke coverage.
 - Added a public synthetic-demo-user dashboard with sanitized lifecycle counters, notification timelines, opaque pagination, visibility-aware polling, in-memory DLQ retry unlocking, and optional `/dashboard` static hosting.
+- Added API and worker runtime entrypoints with liveness, dependency-aware readiness, Prometheus pipeline metrics, redacted Pino logs, WebSocket origin/heartbeat hardening, startup reconciliation, and bounded graceful shutdown.
 - Added a project overview describing NotifyHub's purpose, practical applications, architecture, reliability goals, and current capabilities.
 - Established `docs/notifyhub-engineering-doc.md` as the canonical engineering source of truth.

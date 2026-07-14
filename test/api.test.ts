@@ -8,7 +8,11 @@ import {
   type NotifyRequest,
   type NotifyResult,
 } from '../packages/api/src/index.js';
-import type { PrismaClient } from '../packages/core/src/index.js';
+import {
+  createOperationalMetrics,
+  createOperationalState,
+  type PrismaClient,
+} from '../packages/core/src/index.js';
 
 const apiKey = 'correct-api-key-with-enough-entropy';
 const authorization = `Bearer ${apiKey}`;
@@ -27,6 +31,29 @@ function appWith(
 ) {
   return { app: createApp({ apiKey, notify: handler }), handler };
 }
+
+describe('operational API routes', () => {
+  it('serves live, dependency-aware ready, and Prometheus responses without credentials', async () => {
+    const state = createOperationalState('api', [async () => undefined]);
+    const metrics = createOperationalMetrics('api');
+    const refreshMetrics = vi.fn(async () => metrics.dlqSize.set(2));
+    const app = createApp({
+      apiKey,
+      notify: vi.fn(),
+      operations: { state, metrics, refreshMetrics },
+    });
+
+    expect((await request(app).get('/healthz')).body).toEqual({ status: 'ok' });
+    expect((await request(app).get('/readyz')).status).toBe(503);
+    state.setReady(true);
+    expect((await request(app).get('/readyz')).body).toEqual({ status: 'ready' });
+    const response = await request(app).get('/metrics');
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toContain('text/plain');
+    expect(response.text).toContain('notifyhub_dlq_size{service="api"} 2');
+    expect(refreshMetrics).toHaveBeenCalledOnce();
+  });
+});
 
 describe('POST /v1/notify authentication', () => {
   it('passes a valid normalized request to the handler and returns 202', async () => {

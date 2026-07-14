@@ -43,7 +43,10 @@ afterEach(async () => {
   server = undefined;
 });
 
-async function setup(countUnread = vi.fn(async () => 0)) {
+async function setup(
+  countUnread = vi.fn(async () => 0),
+  options: { allowedOrigins?: readonly string[]; heartbeatIntervalMs?: number } = {},
+) {
   const subscriber = new FakeSubscriber();
   server = createServer();
   gateway = await createInboxWebSocketGateway({
@@ -53,6 +56,7 @@ async function setup(countUnread = vi.fn(async () => 0)) {
     countUnread,
     subscriber,
     verifyOptions: { now: () => now },
+    ...options,
   });
   await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve));
   const address = server.address();
@@ -64,8 +68,8 @@ function token(userId: string, issuedAt = now, lifetimeSeconds = 60): string {
   return issueUserToken(userId, secret, { now: () => issuedAt, lifetimeSeconds }).token;
 }
 
-async function connect(url: string): Promise<WebSocket> {
-  const client = new WebSocket(url);
+async function connect(url: string, origin?: string): Promise<WebSocket> {
+  const client = new WebSocket(url, origin === undefined ? undefined : { origin });
   clients.push(client);
   const buffer: MessageBuffer = { queue: [], waiters: [] };
   messageBuffers.set(client, buffer);
@@ -87,8 +91,8 @@ async function nextJson(client: WebSocket): Promise<unknown> {
   return new Promise((resolve) => buffer.waiters.push(resolve));
 }
 
-async function rejectedStatus(url: string): Promise<number> {
-  const client = new WebSocket(url);
+async function rejectedStatus(url: string, origin?: string): Promise<number> {
+  const client = new WebSocket(url, origin === undefined ? undefined : { origin });
   client.on('error', () => undefined);
   const [, response] = await once(client, 'unexpected-response');
   return response.statusCode ?? 0;
@@ -118,6 +122,32 @@ describe('authenticated inbox WebSocket gateway', () => {
     client.close();
     await once(client, 'close');
     await vi.waitFor(() => expect(gateway?.rooms.size).toBe(0));
+  });
+
+  it('allows configured and origin-less clients while rejecting other browser origins', async () => {
+    const { baseUrl } = await setup(
+      vi.fn(async () => 0),
+      {
+        allowedOrigins: ['https://app.example.test'],
+      },
+    );
+    const url = `${baseUrl}/ws/inbox?token=${token('user-1')}`;
+    expect(await rejectedStatus(url, 'https://attacker.example.test')).toBe(401);
+    const browser = await connect(url, 'https://app.example.test');
+    const native = await connect(url);
+    expect(await nextJson(browser)).toEqual({ type: 'unread', count: 0 });
+    expect(await nextJson(native)).toEqual({ type: 'unread', count: 0 });
+  });
+
+  it('keeps responsive clients alive across heartbeat intervals', async () => {
+    const { baseUrl } = await setup(
+      vi.fn(async () => 0),
+      { heartbeatIntervalMs: 10 },
+    );
+    const client = await connect(`${baseUrl}/ws/inbox?token=${token('user-1')}`);
+    await nextJson(client);
+    await new Promise((resolve) => setTimeout(resolve, 35));
+    expect(client.readyState).toBe(WebSocket.OPEN);
   });
 
   it('isolates rooms and sends message before authoritative unread state', async () => {

@@ -26,7 +26,13 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:kill": "npm run build && vitest run --config vitest.reliability.config.ts",
     "typecheck": "tsc -b --pretty false && npm run typecheck -w @notifyhub/widget && npm run build -w @notifyhub/widget && npm run typecheck -w @notifyhub/demo-host && npm run typecheck -w @notifyhub/dashboard",
-    "verify": "npm run clean && npm run format:check && npm run lint && npm run typecheck && npm run build && npm run smoke -w @notifyhub/demo-host && npm run smoke -w @notifyhub/dashboard && npm test"
+    "verify": "npm run clean && npm run format:check && npm run lint && npm run typecheck && npm run build && npm run smoke -w @notifyhub/demo-host && npm run smoke -w @notifyhub/dashboard && npm test",
+    "start:api": "npm run start:api -w @notifyhub/runtime",
+    "start:router": "npm run start:router -w @notifyhub/runtime",
+    "start:digest": "npm run start:digest -w @notifyhub/runtime",
+    "start:email": "npm run start:email -w @notifyhub/runtime",
+    "start:sms": "npm run start:sms -w @notifyhub/runtime",
+    "start:inapp": "npm run start:inapp -w @notifyhub/runtime"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",
