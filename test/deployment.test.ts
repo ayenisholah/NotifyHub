@@ -109,6 +109,8 @@ describe('container deployment contract', () => {
     expect(cron).toContain('47 1 * * *');
     expect(cron).toContain('17 2 * * *');
     expect(cron).toContain('flock -n');
+    expect(cron).toContain('crontab -u "$cron_user"');
+    expect(deploy).toContain('chown -R "$runtime_user:$runtime_user" "$root"');
   });
 
   it('does not copy local secrets or generated output into the build context', async () => {

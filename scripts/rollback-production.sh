@@ -32,4 +32,9 @@ docker compose --project-name notifyhub --project-directory "$previous" \
   --env-file "$env_file" -f "$previous/compose.yaml" up --detach --wait --wait-timeout 180
 curl --fail --silent --show-error http://127.0.0.1:4100/ > /dev/null
 curl --fail --silent --show-error http://127.0.0.1:4101/readyz > /dev/null
+runtime_user="${NOTIFYHUB_RUNTIME_USER:-runner}"
+if [ "$(id -u)" -eq 0 ] && id "$runtime_user" > /dev/null 2>&1; then
+  chown -R "$runtime_user:$runtime_user" "$root"
+  chown -h "$runtime_user:$runtime_user" "$current"
+fi
 printf 'Rolled back %s to %s; database restoration was not performed.\n' "$revision" "$(basename "$previous")"

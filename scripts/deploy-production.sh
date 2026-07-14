@@ -12,7 +12,9 @@ current="${NOTIFYHUB_CURRENT:-/opt/notifyhub-current}"
 release="$root/releases/$revision"
 env_file="$root/.env"
 expected_user="${NOTIFYHUB_DEPLOY_USER:-runner}"
+runtime_user="${NOTIFYHUB_RUNTIME_USER:-runner}"
 [ "$(id -un)" = "$expected_user" ] || { echo "Deployment must run as $expected_user" >&2; exit 77; }
+id "$runtime_user" > /dev/null 2>&1 || { echo "Runtime account is missing: $runtime_user" >&2; exit 77; }
 [ -f "$release/compose.yaml" ] || { echo "Release payload is missing for $revision" >&2; exit 66; }
 [ -f "$env_file" ] || { echo "Missing $env_file" >&2; exit 66; }
 [ "$(stat -c '%a' "$env_file")" = '600' ] || { echo "$env_file must have mode 600" >&2; exit 77; }
@@ -90,7 +92,9 @@ done
 curl --fail --silent --show-error http://127.0.0.1:4100/ > /dev/null
 curl --fail --silent --show-error http://127.0.0.1:4101/readyz > /dev/null
 curl --fail --silent --show-error http://127.0.0.1:4125/readyz > /dev/null
-"$release/scripts/install-production-cron.sh"
+chown -R "$runtime_user:$runtime_user" "$root"
+chown -h "$runtime_user:$runtime_user" "$current"
+NOTIFYHUB_CRON_USER="$runtime_user" "$release/scripts/install-production-cron.sh"
 
 trap - EXIT HUP INT TERM
 

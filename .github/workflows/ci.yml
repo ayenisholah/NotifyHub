@@ -176,7 +176,7 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
         run: |
           scp "/tmp/notifyhub-${GITHUB_SHA}.tar.gz" "$VPS_USER@$VPS_HOST:/tmp/notifyhub-${GITHUB_SHA}.tar.gz"
-          ssh "$VPS_USER@$VPS_HOST" "set -eu; release='/opt/notifyhub/releases/${GITHUB_SHA}'; mkdir -p \"\$release\"; tar -xzf '/tmp/notifyhub-${GITHUB_SHA}.tar.gz' -C \"\$release\"; rm -f '/tmp/notifyhub-${GITHUB_SHA}.tar.gz'; chmod 700 \"\$release\"/scripts/*.sh; \"\$release/scripts/deploy-production.sh\" '${GITHUB_SHA}'"
+          ssh "$VPS_USER@$VPS_HOST" "set -eu; release='/opt/notifyhub/releases/${GITHUB_SHA}'; mkdir -p \"\$release\"; tar -xzf '/tmp/notifyhub-${GITHUB_SHA}.tar.gz' -C \"\$release\"; rm -f '/tmp/notifyhub-${GITHUB_SHA}.tar.gz'; chmod 700 \"\$release\"/scripts/*.sh; NOTIFYHUB_DEPLOY_USER='${VPS_USER}' NOTIFYHUB_RUNTIME_USER=runner \"\$release/scripts/deploy-production.sh\" '${GITHUB_SHA}'"
       - name: Open loopback Mailpit tunnel
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
