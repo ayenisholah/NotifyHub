@@ -35,9 +35,14 @@ jobs:
       OPERATOR_KEY: container-operator-key-32-characters
       TOKEN_SECRET: container-token-secret-32-characters
       DEMO_USER_ID: synthetic-container-demo
-      WS_ALLOWED_ORIGINS: http://localhost:4100
+      WS_ALLOWED_ORIGINS: http://127.0.0.1:4100
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
       - name: Validate Compose configuration
         run: docker compose config --quiet
       - name: Validate host Nginx routing
@@ -55,6 +60,10 @@ jobs:
           curl --fail --silent --show-error http://127.0.0.1:4100/ >/dev/null
           curl --fail --silent --show-error http://127.0.0.1:4101/dashboard >/dev/null
           curl --fail --silent --show-error http://127.0.0.1:4125/readyz >/dev/null
+      - name: Install the Chromium browser
+        run: npx playwright install --with-deps chromium
+      - name: Verify the public browser journey
+        run: npm run test:e2e
       - name: Verify worker restart recovery
         run: |
           docker compose restart worker-email

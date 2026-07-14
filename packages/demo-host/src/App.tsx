@@ -2,6 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { NotifyHubInbox } from '@notifyhub/widget';
 
 type TokenState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; token: string };
+type DemoState =
+  | { status: 'idle' }
+  | { status: 'sending' }
+  | { status: 'sent' }
+  | { status: 'limited' }
+  | { status: 'error' };
 
 const projects = [
   { name: 'Website refresh', detail: '12 of 18 tasks', progress: 67, color: 'violet' },
@@ -25,6 +31,7 @@ async function fetchToken(signal?: AbortSignal): Promise<string> {
 
 export function App() {
   const [token, setToken] = useState<TokenState>({ status: 'loading' });
+  const [demo, setDemo] = useState<DemoState>({ status: 'idle' });
   const loadToken = useCallback((signal?: AbortSignal) => {
     setToken({ status: 'loading' });
     void fetchToken(signal).then(
@@ -41,6 +48,21 @@ export function App() {
     loadToken(controller.signal);
     return () => controller.abort();
   }, [loadToken]);
+
+  const sendDemoNotification = async (): Promise<void> => {
+    setDemo({ status: 'sending' });
+    try {
+      const response = await fetch('/demo/notify', { method: 'POST' });
+      if (response.status === 429) {
+        setDemo({ status: 'limited' });
+        return;
+      }
+      if (!response.ok) throw new Error('Demo notification failed');
+      setDemo({ status: 'sent' });
+    } catch {
+      setDemo({ status: 'error' });
+    }
+  };
 
   return (
     <div className="app-shell">
@@ -85,10 +107,20 @@ export function App() {
             <h1 id="welcome-title">Good morning, Alex.</h1>
             <p>Here’s what’s happening across your projects today.</p>
           </div>
-          <button type="button" className="primary">
-            + New project
+          <button
+            type="button"
+            className="primary"
+            disabled={demo.status === 'sending'}
+            onClick={() => void sendDemoNotification()}
+          >
+            {demo.status === 'sending' ? 'Sending update…' : 'Send demo notification'}
           </button>
         </section>
+        <div className="demo-feedback" aria-live="polite">
+          {demo.status === 'sent' && 'Update sent. Open the inbox to see it arrive.'}
+          {demo.status === 'limited' && 'Demo limit reached. Please wait before trying again.'}
+          {demo.status === 'error' && 'The demo update could not be sent. Please try again.'}
+        </div>
         <section aria-labelledby="summary-title">
           <h2 id="summary-title">Project summary</h2>
           <div className="project-grid" id="projects">
