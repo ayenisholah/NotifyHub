@@ -144,7 +144,6 @@ export function NotifyHubInbox({
       }
       socket.onopen = () => {
         attempts = 0;
-        stopPolling();
         setConnection('connected');
       };
       socket.onmessage = ({ data }) => {
@@ -166,6 +165,7 @@ export function NotifyHubInbox({
       };
       socket.onerror = () => socket?.close();
     };
+    startPolling();
     connect();
     return () => {
       stopped = true;

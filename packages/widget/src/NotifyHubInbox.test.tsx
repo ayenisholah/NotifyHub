@@ -123,7 +123,7 @@ describe('NotifyHubInbox', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(4));
   });
 
-  it('deduplicates and orders WebSocket messages, accepts unread truth, and polls while reconnecting', async () => {
+  it('deduplicates WebSocket messages and reconciles persisted truth while connected', async () => {
     vi.useFakeTimers();
     render(<NotifyHubInbox userToken="token" pollIntervalMs={100} />);
     await act(async () => {
@@ -145,11 +145,15 @@ describe('NotifyHubInbox', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Notifications, 7 unread' }));
     expect(screen.getAllByText('Second')).toHaveLength(1);
     expect(screen.getByText('Updated')).toBeInTheDocument();
-    act(() => socket.disconnect());
     await act(async () => {
       await vi.advanceTimersByTimeAsync(100);
     });
     expect(fetch).toHaveBeenCalledTimes(2);
+    act(() => socket.disconnect());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+    expect(fetch).toHaveBeenCalledTimes(3);
     await act(async () => {
       await vi.advanceTimersByTimeAsync(900);
     });
