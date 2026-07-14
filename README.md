@@ -6,7 +6,7 @@ NotifyHub is an intentionally engineered multi-channel notification service with
 
 ## Status
 
-M0 through M3 and W2D5-1 have passed, including the production-shaped Compose topology, PostgreSQL integration, public Chromium journey, worker-kill recovery, and [controlled 10,000-notification evidence](docs/measurements.md). W2D5-2 automated production deployment is implemented and remains open until its first successful live rollout is recorded in a follow-up documentation PR.
+M0 through M3, W2D5-1, and W2D5-2 have passed, including the production-shaped Compose topology, PostgreSQL integration, public Chromium journey, worker-kill recovery, [controlled 10,000-notification evidence](docs/measurements.md), and the first unattended production deployment. W2D5-3 evidence-backed release documentation is next.
 
 The service accepts one authenticated product event and routes it to email, in-app inbox, and mock SMS while respecting preferences, quiet hours, digests, bounded retries, and an append-only delivery trail.
 
