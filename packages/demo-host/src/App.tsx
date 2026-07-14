@@ -81,7 +81,9 @@ export function App() {
           <a href="#activity">Activity</a>
         </nav>
         <div className="header-actions">
-          {token.status === 'ready' && <NotifyHubInbox userToken={token.token} />}
+          {token.status === 'ready' && (
+            <NotifyHubInbox userToken={token.token} pollIntervalMs={1_000} />
+          )}
           {token.status === 'loading' && (
             <span className="token-state" role="status">
               Loading notifications…
