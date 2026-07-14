@@ -6,7 +6,7 @@ NotifyHub is an intentionally engineered multi-channel notification service with
 
 ## Status
 
-M0, M1, and M2 have passed, and the production-shaped Compose topology is verified in CI. M3 remains unclaimed until the integration and browser gates pass.
+M0 through M3 have passed, including the production-shaped Compose topology, PostgreSQL integration, public Chromium journey, and worker-restart recovery in CI. W2D5-1 controlled reliability and throughput evidence is next.
 
 The service accepts one authenticated product event and routes it to email, in-app inbox, and mock SMS while respecting preferences, quiet hours, digests, bounded retries, and an append-only delivery trail.
 

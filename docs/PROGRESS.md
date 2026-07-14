@@ -194,9 +194,9 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Next: W2D4-3 — CI integration and browser suites (M3).
 - Blockers/notes: this host has no Docker runtime, so the Docker-capable Actions job is authoritative for the container gate. Synthetic demo fixtures and browser proof were deferred to W2D4-3.
 
-## 2026-07-14 — W2D4-3 (in progress)
+## 2026-07-14 — W2D4-3 (M3)
 
-- Did: added idempotent synthetic demo user and three-channel template fixtures; a health-gated one-shot Compose seed service; an exact-origin, per-client and globally rate-limited public demo trigger with a fixed server-side payload; accessible trigger feedback; and a Playwright Chromium journey covering live inbox delivery, persisted read state, dashboard channel timelines, and Mailpit receipt.
-- Verify: PARTIAL PASS (`npm run verify`; format, lint, strict typecheck, clean production builds and security smokes; 171 core/API tests, 5 widget tests, 11 demo-host tests, and 20 dashboard tests). The PostgreSQL fixture integration and complete Compose/Playwright journey require the Docker-capable Actions runner.
-- Next: W2D4-3 remains active until the integration and browser jobs pass in CI.
-- Blockers/notes: the public trigger accepts no request payload and never exposes the API key. Mailpit remains loopback-only. This host has no Docker runtime or installed browser binary, so no local container or browser claim is made.
+- Did: added idempotent synthetic demo user and three-channel template fixtures; a health-gated one-shot Compose seed service; an exact-origin, per-client and globally rate-limited public demo trigger with a fixed server-side payload; accessible trigger feedback; and a Playwright Chromium journey covering live inbox delivery, persisted read state, dashboard channel timelines, and Mailpit receipt. The browser gate exposed a connected-socket delivery gap, so the widget now retains authoritative persistence reconciliation while WebSocket delivery remains the immediate path; the public demo reconciles every second.
+- Verify: PASS (`npm run verify`; format, lint, strict typecheck, clean production builds and security smokes; 171 core/API tests, 5 widget tests, 11 demo-host tests, and 20 dashboard tests). GitHub Actions run `29330810406` passed PostgreSQL 18 migrations and integration, built and started the complete health-gated Compose topology, passed loopback smokes, completed the public Chromium journey, and passed worker-restart recovery.
+- Next: W2D5-1 — Controlled reliability and throughput evidence.
+- Blockers/notes: the public trigger accepts no request payload and never exposes the API key. Mailpit remains loopback-only. This host has no Docker runtime, so the Docker-capable Actions run is the authoritative container and browser evidence.
