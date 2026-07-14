@@ -92,6 +92,7 @@ services:
       - '127.0.0.1:${NOTIFYHUB_MAILPIT_UI_PORT:-4125}:4125'
     networks:
       - backend
+      - egress
     healthcheck:
       test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:4125/readyz']
       interval: 5s

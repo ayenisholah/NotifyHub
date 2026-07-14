@@ -1,4 +1,10 @@
-FROM node:22-bookworm-slim AS build
+FROM node:22-bookworm-slim AS base
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends openssl \
+    && rm -rf /var/lib/apt/lists/*
+
+FROM base AS build
 
 WORKDIR /app
 
@@ -17,7 +23,7 @@ RUN npm ci
 COPY packages ./packages
 RUN npm run build && npm prune --omit=dev
 
-FROM node:22-bookworm-slim AS runtime
+FROM base AS runtime
 
 ENV NODE_ENV=production
 WORKDIR /app

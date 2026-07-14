@@ -11,7 +11,10 @@ describe('container deployment contract', () => {
     const dockerfile = await source('Dockerfile');
     const entrypoint = await source('scripts/container-entrypoint.sh');
 
-    expect(dockerfile).toContain('FROM node:22-bookworm-slim AS build');
+    expect(dockerfile).toContain('FROM node:22-bookworm-slim AS base');
+    expect(dockerfile).toContain('FROM base AS build');
+    expect(dockerfile).toContain('FROM base AS runtime');
+    expect(dockerfile).toContain('apt-get install --yes --no-install-recommends openssl');
     expect(dockerfile).toContain('npm prune --omit=dev');
     expect(dockerfile).toContain('USER node');
     expect(dockerfile).toContain('ENTRYPOINT ["notifyhub-entrypoint"]');
@@ -46,6 +49,7 @@ describe('container deployment contract', () => {
     expect(compose).toContain('127.0.0.1:${NOTIFYHUB_DEMO_PORT:-4100}:4100');
     expect(compose).toContain('127.0.0.1:${NOTIFYHUB_API_PORT:-4101}:4101');
     expect(compose).toContain('127.0.0.1:${NOTIFYHUB_MAILPIT_UI_PORT:-4125}:4125');
+    expect(compose).toMatch(/mailpit:[\s\S]*?networks:\s+- backend\s+- egress\s+healthcheck:/u);
     for (const port of [4100, 4101, 4111, 4112, 4113, 4114, 4115, 4125, 4126, 4132, 4137]) {
       expect(compose).toContain(String(port));
     }
