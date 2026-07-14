@@ -17,7 +17,7 @@ GitHub then verifies the live demo and dashboard metadata, social images, manife
 
 ## Manual image rollback
 
-For the SHA currently deployed, run as the `runner` user:
+For the SHA currently deployed, run as the configured privileged deployment account. Persistent configuration, backups, logs, and cron remain owned by `runner`:
 
 ```sh
 /opt/notifyhub-current/scripts/rollback-production.sh <current-full-sha>
@@ -61,7 +61,7 @@ The one-shot `retention` role uses `DEMO_DATA_RETENTION_DAYS=7`. It records each
 Inspect cron and run either task manually as `runner`:
 
 ```sh
-crontab -l
+sudo crontab -u runner -l
 /opt/notifyhub-current/scripts/production-backup.sh
 /opt/notifyhub-current/scripts/production-maintenance.sh
 ```
