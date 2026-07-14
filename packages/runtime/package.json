@@ -6,6 +6,7 @@
   "scripts": {
     "start:api": "node dist/main.js api",
     "seed:demo": "node dist/main.js seed",
+    "measure": "node dist/main.js measure",
     "start:router": "node dist/main.js router",
     "start:digest": "node dist/main.js digest",
     "start:email": "node dist/main.js email",
