@@ -9,16 +9,29 @@ test('public demo reaches the inbox, dashboard timeline, and Mailpit', async ({
 }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Good morning, Alex.' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Notifications' })).toBeVisible();
+  const bell = page.getByRole('button', { name: /^Notifications/u });
+  await expect(bell).toBeVisible();
+  await expect(page.locator('.nh-sr-only')).toContainText('Connection connected', {
+    timeout: 10_000,
+  });
+  await bell.click();
+  const panel = page.getByRole('region', { name: 'Notifications' });
+  await expect(panel).toBeVisible();
+  await expect(panel.getByText('Loading notifications…')).toHaveCount(0);
+  const markAllRead = panel.getByRole('button', { name: 'Mark all read' });
+  if (await markAllRead.isEnabled()) await markAllRead.click();
+  await expect(markAllRead).toBeDisabled();
+  await bell.click();
+  await expect(bell).toHaveAccessibleName('Notifications');
 
   await page.getByRole('button', { name: 'Send demo notification' }).click();
   await expect(page.getByText('Update sent. Open the inbox to see it arrive.')).toBeVisible();
-  const bell = page.getByRole('button', { name: /Notifications, 1 unread/u });
-  await expect(bell).toBeVisible({ timeout: 10_000 });
+  await expect(bell).toHaveAccessibleName(/Notifications, 1 unread/u, { timeout: 10_000 });
   await bell.click();
-  await expect(page.getByText('Nina Kim completed “Finalize homepage copy”')).toBeVisible();
-  await page.getByRole('button', { name: 'Mark Project update as read' }).click();
-  await expect(page.getByRole('button', { name: 'Notifications', exact: true })).toBeVisible();
+  const message = panel.getByRole('button', { name: 'Mark Project update as read' });
+  await expect(message).toContainText('Nina Kim completed “Finalize homepage copy”');
+  await message.click();
+  await expect(bell).toHaveAccessibleName('Notifications');
 
   await page.reload();
   await expect(page.getByRole('button', { name: 'Notifications', exact: true })).toBeVisible();
