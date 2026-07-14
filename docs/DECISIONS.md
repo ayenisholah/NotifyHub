@@ -29,3 +29,9 @@
 - Status: accepted
 - Decision: every deployable process owns health, readiness, metrics, structured logging, and graceful shutdown; browser WebSocket origins use an explicit production allowlist while origin-less non-browser clients remain supported.
 - Rationale: Compose can supervise and scrape each isolated process directly, while exact origin checks protect browser tokens without treating the advisory `Origin` header as non-browser authentication.
+
+## D-006 — One image, private service network, and host-Nginx edge
+
+- Status: accepted
+- Decision: build one non-root application image for the API, workers, and demo; assign NotifyHub the dedicated `4100–4137` range; bind only the demo, API, and Mailpit UI to host loopback; and route public traffic through the VPS's existing Nginx installation.
+- Rationale: a shared artifact prevents process build drift, the unique range avoids existing VPS listeners, and loopback-only upstreams preserve the sanitized public boundary without competing for Nginx-owned ports 80 and 443.

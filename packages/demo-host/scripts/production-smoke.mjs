@@ -26,7 +26,7 @@ if (upstreamAddress === null || typeof upstreamAddress === 'string')
   throw new Error('Upstream did not start');
 
 const demo = createDemoServer({
-  port: 3000,
+  port: 4100,
   apiBaseUrl: new URL(`http://127.0.0.1:${upstreamAddress.port}`),
   userId: 'smoke-user',
   apiKey: secret,

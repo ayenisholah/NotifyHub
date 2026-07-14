@@ -18,7 +18,13 @@ async function upstream(handler: RequestListener): Promise<{ server: Server; url
 }
 
 function config(apiBaseUrl: URL): DemoConfig {
-  return { port: 3000, apiBaseUrl, userId: 'demo-user', apiKey: 'server-secret' };
+  return {
+    host: '127.0.0.1',
+    port: 4100,
+    apiBaseUrl,
+    userId: 'demo-user',
+    apiKey: 'server-secret',
+  };
 }
 
 afterEach(async () => {
@@ -34,20 +40,47 @@ describe('demo host server', () => {
   it('validates the fixed deployment configuration', () => {
     expect(
       loadDemoConfig({
-        DEMO_PORT: '3000',
-        DEMO_API_BASE_URL: 'http://127.0.0.1:4000',
+        DEMO_PORT: '4100',
+        DEMO_HOST: '0.0.0.0',
+        DEMO_API_BASE_URL: 'http://api:4101',
         DEMO_USER_ID: 'demo',
         API_KEY: 'secret',
       }),
-    ).toMatchObject({ port: 3000, userId: 'demo', apiKey: 'secret' });
+    ).toMatchObject({ host: '0.0.0.0', port: 4100, userId: 'demo', apiKey: 'secret' });
     expect(() =>
       loadDemoConfig({
         DEMO_PORT: '3001',
-        DEMO_API_BASE_URL: 'http://127.0.0.1:4000',
+        DEMO_API_BASE_URL: 'http://127.0.0.1:4101',
         DEMO_USER_ID: 'demo',
         API_KEY: 'secret',
       }),
     ).toThrow('DEMO_PORT');
+
+    for (const apiBaseUrl of [
+      'ftp://api:4101',
+      'http://user:password@api:4101',
+      'http://api:4101/private',
+      'http://api:4101?secret=value',
+    ]) {
+      expect(() =>
+        loadDemoConfig({
+          DEMO_PORT: '4100',
+          DEMO_API_BASE_URL: apiBaseUrl,
+          DEMO_USER_ID: 'demo',
+          API_KEY: 'secret',
+        }),
+      ).toThrow('DEMO_API_BASE_URL');
+    }
+
+    expect(() =>
+      loadDemoConfig({
+        DEMO_HOST: 'api',
+        DEMO_PORT: '4100',
+        DEMO_API_BASE_URL: 'http://api:4101',
+        DEMO_USER_ID: 'demo',
+        API_KEY: 'secret',
+      }),
+    ).toThrow('DEMO_HOST');
   });
 
   it('mints a token server-side and forbids caching', async () => {
