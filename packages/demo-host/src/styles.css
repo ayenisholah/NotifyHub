@@ -144,6 +144,18 @@ h1 {
   font-weight: 650;
   cursor: pointer;
 }
+.primary:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+.demo-feedback {
+  min-height: 1.5rem;
+  margin: -2.5rem 0 2rem;
+  color: #5148d8;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: right;
+}
 h2 {
   margin: 0 0 1.25rem;
   font-size: 1.15rem;
@@ -291,6 +303,10 @@ h2 {
     align-items: start;
     flex-direction: column;
     margin-bottom: 2.5rem;
+  }
+  .demo-feedback {
+    margin-top: -1.75rem;
+    text-align: left;
   }
   .project-grid {
     grid-template-columns: 1fr;

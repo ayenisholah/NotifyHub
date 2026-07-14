@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from './App.js';
@@ -8,7 +8,10 @@ vi.mock('@notifyhub/widget', () => ({
 }));
 
 describe('Acme Projects demo', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
 
   it('renders accessible navigation, main content, summaries and the real widget position', async () => {
     vi.stubGlobal(
@@ -33,5 +36,34 @@ describe('Acme Projects demo', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
     expect(await screen.findByRole('button', { name: 'Inbox retry-token' })).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('sends a demo notification and announces success', async () => {
+    const fetch = vi.fn(async (input: RequestInfo | URL) =>
+      input === '/demo/token'
+        ? { ok: true, status: 200, json: async () => ({ token: 'demo-token' }) }
+        : { ok: true, status: 202, json: async () => ({ notificationId: 'notification-1' }) },
+    );
+    vi.stubGlobal('fetch', fetch);
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Send demo notification' }));
+    expect(
+      await screen.findByText('Update sent. Open the inbox to see it arrive.'),
+    ).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith('/demo/notify', { method: 'POST' });
+  });
+
+  it('announces the public demo rate limit', async () => {
+    const fetch = vi.fn(async (input: RequestInfo | URL) =>
+      input === '/demo/token'
+        ? { ok: true, status: 200, json: async () => ({ token: 'demo-token' }) }
+        : { ok: false, status: 429 },
+    );
+    vi.stubGlobal('fetch', fetch);
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Send demo notification' }));
+    expect(
+      await screen.findByText('Demo limit reached. Please wait before trying again.'),
+    ).toBeInTheDocument();
   });
 });

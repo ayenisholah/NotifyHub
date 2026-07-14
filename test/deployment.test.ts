@@ -19,7 +19,7 @@ describe('container deployment contract', () => {
     expect(dockerfile).toContain('USER node');
     expect(dockerfile).toContain('ENTRYPOINT ["notifyhub-entrypoint"]');
     expect(entrypoint).toContain('./node_modules/.bin/prisma migrate deploy');
-    for (const role of ['api', 'router', 'digest', 'email', 'sms', 'inapp', 'demo']) {
+    for (const role of ['api', 'seed', 'router', 'digest', 'email', 'sms', 'inapp', 'demo']) {
       expect(entrypoint).toContain(role);
     }
   });
@@ -34,6 +34,7 @@ describe('container deployment contract', () => {
       'redis',
       'mailpit',
       'api',
+      'seed-demo',
       'worker-router',
       'worker-digest',
       'worker-email',
@@ -55,6 +56,7 @@ describe('container deployment contract', () => {
     }
     expect(compose.toLowerCase()).not.toContain('caddy');
     expect(compose).toContain('condition: service_healthy');
+    expect(compose).toContain('condition: service_completed_successfully');
     expect(nginx).toContain('location = /v1/notify');
     expect(nginx).toContain('location ^~ /dashboard');
     expect(nginx).toContain('proxy_pass http://127.0.0.1:4100');

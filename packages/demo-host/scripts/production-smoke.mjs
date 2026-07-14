@@ -30,6 +30,7 @@ const demo = createDemoServer({
   apiBaseUrl: new URL(`http://127.0.0.1:${upstreamAddress.port}`),
   userId: 'smoke-user',
   apiKey: secret,
+  allowedOrigins: ['http://127.0.0.1'],
 });
 
 try {
