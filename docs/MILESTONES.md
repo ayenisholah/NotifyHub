@@ -10,4 +10,4 @@
 
 ## Current status
 
-M0, M1, and M2 passed on 2026-07-12. `W2D4-2` passed its container gate on 2026-07-14; `W2D4-3` is the next task.
+M0, M1, and M2 passed on 2026-07-12. M3 passed its complete integration, Compose, Chromium, and worker-restart gate on 2026-07-14. `W2D5-1` is the next task.
