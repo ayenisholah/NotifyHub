@@ -83,7 +83,7 @@ The project currently includes:
 - The Acme Projects demonstration site
 - A sanitized public lifecycle and dead-letter dashboard scoped to a synthetic demo user
 
-The service now includes operational health checks, dependency-aware readiness, Prometheus metrics, structured logs, and process-wide graceful shutdown. The next planned task adds container images and the Docker Compose topology; later work covers browser testing, performance evidence, and production deployment.
+The service now includes operational health checks, dependency-aware readiness, Prometheus metrics, structured logs, process-wide graceful shutdown, a production image, and a CI-verified Docker Compose topology behind host Nginx. Later work covers browser testing, performance evidence, and production deployment.
 
 ## Summary
 

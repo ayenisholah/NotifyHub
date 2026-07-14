@@ -187,9 +187,9 @@ After completing or abandoning a task, append an entry. Never rewrite earlier en
 - Next: W2D4-2 — Images and Compose topology.
 - Blockers/notes: operational endpoints intentionally have no application authentication and must remain on internal container networks or behind deployment-layer access controls. External provider probes are excluded from readiness to avoid restart loops. This host has no container runtime, so PostgreSQL/Redis integration remains delegated to the Docker-capable Actions job; container images, Compose health checks, and TLS remain W2D4-2.
 
-## 2026-07-14 — W2D4-2 (in progress)
+## 2026-07-14 — W2D4-2
 
 - Did: added the non-root multi-stage application image, role-aware migration/startup entrypoint, private Compose topology, PostgreSQL 18 and Redis persistence, Mailpit, isolated API/worker/demo services, health-gated dependencies, a dedicated `41xx` port range, loopback host bindings, host-Nginx routing, container-safe demo networking, deployment contract tests, and a Docker-capable CI smoke/restart gate.
-- Verify: PARTIAL PASS (`npm run verify`; format, lint, strict typecheck, clean production builds, security smokes, 171 core/API tests, 5 widget tests, 6 demo-host tests, and 20 dashboard tests; focused deployment contracts and shell syntax passed). Image build and full topology startup require the Docker-capable Actions runner.
-- Next: W2D4-2 remains active until local verification and the container job pass.
-- Blockers/notes: this host has no Docker runtime. The stack intentionally applies schema migrations but does not seed synthetic demo fixtures; browser fixtures remain W2D4-3.
+- Verify: PASS (`npm run verify`; format, lint, strict typecheck, clean production builds, security smokes, 171 core/API tests, 5 widget tests, 6 demo-host tests, and 20 dashboard tests; focused deployment contracts and shell syntax passed). GitHub Actions run `29324521587` built the production image, validated Compose and host-Nginx configuration, started the complete health-gated topology, reached the demo, dashboard, and loopback Mailpit endpoints, restarted the email worker, and passed the PostgreSQL 18 migration and integration suite.
+- Next: W2D4-3 — CI integration and browser suites (M3).
+- Blockers/notes: this host has no Docker runtime, so the Docker-capable Actions job is authoritative for the container gate. The stack intentionally applies schema migrations but does not seed synthetic demo fixtures; browser fixtures remain W2D4-3.

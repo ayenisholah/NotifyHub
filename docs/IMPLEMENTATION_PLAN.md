@@ -62,7 +62,7 @@ Tasks are executed top to bottom. The first unchecked box is the current task. D
 - [x] **W2D3-2 — Accessible neutral demo host**
 - [x] **W2D3-3 — Sanitized public dashboard**
 - [x] **W2D4-1 — Health, readiness, metrics, shutdown**
-- [ ] **W2D4-2 — Images and Compose topology**
+- [x] **W2D4-2 — Images and Compose topology**
 - [ ] **W2D4-3 — CI integration and browser suites (M3)**
 - [ ] **W2D5-1 — Controlled reliability and throughput evidence**
 - [ ] **W2D5-2 — Production deployment**
