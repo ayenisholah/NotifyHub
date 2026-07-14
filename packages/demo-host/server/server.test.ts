@@ -1,5 +1,8 @@
 // @vitest-environment node
 import { createServer as createHttpServer, type RequestListener, type Server } from 'node:http';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 import request from 'supertest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -7,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createDemoServer, loadDemoConfig, type DemoConfig } from './server.js';
 
 const servers: Server[] = [];
+const temporaryDirectories: string[] = [];
 
 async function upstream(handler: RequestListener): Promise<{ server: Server; url: URL }> {
   const server = createHttpServer(handler);
@@ -30,11 +34,14 @@ function config(apiBaseUrl: URL): DemoConfig {
 
 afterEach(async () => {
   vi.restoreAllMocks();
-  await Promise.all(
-    servers
+  await Promise.all([
+    ...servers
       .splice(0)
       .map((server) => new Promise<void>((resolve) => server.close(() => resolve()))),
-  );
+    ...temporaryDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { recursive: true, force: true })),
+  ]);
 });
 
 describe('demo host server', () => {
@@ -203,5 +210,25 @@ describe('demo host server', () => {
       .expect(502);
     expect(JSON.stringify(response.body)).not.toContain('server-secret');
     expect(JSON.stringify(response.body)).not.toContain('database details');
+  });
+
+  it('revalidates stable public files and keeps hashed Vite assets immutable', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'notifyhub-demo-assets-'));
+    temporaryDirectories.push(directory);
+    await mkdir(path.join(directory, 'assets'));
+    await writeFile(path.join(directory, 'index.html'), '<main>NotifyHub Demo</main>');
+    await writeFile(path.join(directory, 'robots.txt'), 'User-agent: *');
+    await writeFile(path.join(directory, 'assets', 'app-123.js'), 'globalThis.demo = true;');
+    const demo = createDemoServer(config(new URL('http://127.0.0.1:4101')), directory);
+    servers.push(demo);
+
+    const stable = await request(demo).get('/robots.txt').expect(200);
+    expect(stable.headers['cache-control']).toBe('public, max-age=300, must-revalidate');
+
+    const asset = await request(demo).get('/assets/app-123.js').expect(200);
+    expect(asset.headers['cache-control']).toBe('public, max-age=31536000, immutable');
+
+    const html = await request(demo).get('/').set('Accept', 'text/html').expect(200);
+    expect(html.headers['cache-control']).toBe('no-store');
   });
 });

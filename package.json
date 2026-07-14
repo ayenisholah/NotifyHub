@@ -17,6 +17,7 @@
     "prisma": "^7.8.0"
   },
   "scripts": {
+    "assets:generate": "node scripts/generate-seo-assets.mjs",
     "build": "tsc -b && npm run build -w @notifyhub/widget && npm run build -w @notifyhub/demo-host && npm run build -w @notifyhub/dashboard",
     "clean": "tsc -b --clean && npm run clean -w @notifyhub/dashboard",
     "format": "prettier --write .",
