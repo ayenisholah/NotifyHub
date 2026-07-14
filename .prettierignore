@@ -6,3 +6,4 @@ coverage/
 sample/
 notifyhub-engineering-doc.md
 package-lock.json
+docs/assets/*.svg

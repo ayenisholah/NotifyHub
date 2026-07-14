@@ -83,7 +83,9 @@ The project currently includes:
 - The Acme Projects demonstration site
 - A sanitized public lifecycle and dead-letter dashboard scoped to a synthetic demo user
 
-The service now includes operational health checks, dependency-aware readiness, Prometheus metrics, structured logs, process-wide graceful shutdown, a production image, and a CI-verified Docker Compose topology behind host Nginx. Later work covers browser testing, performance evidence, and production deployment.
+The service includes operational health checks, dependency-aware readiness, Prometheus metrics, structured logs, process-wide graceful shutdown, a non-root production image, and a private Docker Compose topology behind host Nginx. GitHub Actions verifies PostgreSQL integration, the complete Chromium journey, worker interruption recovery, Compose health, protected backup restoration, and immutable image metadata.
+
+The public synthetic demo and dashboard are deployed automatically from successful `main` revisions. Production rollout creates and validates a PostgreSQL/configuration backup before switching releases, verifies the exact source revision and live delivery journey, and restores the previous image and Compose release if acceptance fails. A controlled isolated run accepted 10,000 notifications at 199.96 per second with p95 62.51 ms and no residual queue work; those synthetic results are evidence, not a production SLO.
 
 ## Summary
 
