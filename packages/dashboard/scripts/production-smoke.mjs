@@ -1,6 +1,13 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
+import { assertPublicMetadata, pngDimensions } from '../../../scripts/verify-public-metadata.mjs';
+
+const canonical = 'https://notifyhub.sholaayeni.xyz/dashboard';
+const description =
+  'Observe NotifyHub notification delivery in real time across channels, statuses, retry timelines, and the dead-letter queue.';
+const robots = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
+
 const dist = new URL('../dist/', import.meta.url);
 const indexUrl = new URL('index.html', dist);
 
@@ -22,12 +29,41 @@ try {
 }
 
 const index = await readFile(indexUrl, 'utf8');
-if (!index.includes('NotifyHub operator dashboard') || !index.includes('/dashboard/assets/'))
+if (!index.includes('/dashboard/assets/'))
   throw new Error('Dashboard production HTML does not use the expected /dashboard asset base.');
+assertPublicMetadata(index, {
+  label: 'Dashboard',
+  title: 'NotifyHub Dashboard — Live notification delivery',
+  canonical,
+  description,
+  robots,
+  themeColor: '#0f1216',
+  image: `${canonical}/social-dashboard.png`,
+  structuredType: 'WebPage',
+  structuredName: 'NotifyHub Dashboard',
+  validateStructuredData(data) {
+    if (
+      !data.description?.includes('public observability surface') ||
+      data.isPartOf?.name !== 'NotifyHub' ||
+      data.isPartOf?.url !== 'https://notifyhub.sholaayeni.xyz/' ||
+      data.about?.applicationCategory !== 'DeveloperApplication'
+    ) {
+      throw new Error('Dashboard WebPage JSON-LD is incomplete or invalid.');
+    }
+  },
+});
 
 const bundleFiles = await filesBelow(dist);
 if (!bundleFiles.some((file) => /assets[/\\].+\.js$/u.test(file.pathname)))
   throw new Error('Dashboard production JavaScript asset is missing.');
+
+const socialCard = await readFile(new URL('social-dashboard.png', dist));
+const socialDimensions = pngDimensions(socialCard);
+if (socialDimensions.width !== 1200 || socialDimensions.height !== 630) {
+  throw new Error(
+    `Dashboard social card has dimensions ${socialDimensions.width}x${socialDimensions.height}.`,
+  );
+}
 
 const forbidden = [
   'production-smoke-operator-key-never-bundle',
@@ -57,5 +93,5 @@ for (const file of bundleFiles) {
 }
 
 console.log(
-  'Dashboard production smoke check passed; assets use /dashboard and contain no key, recipient, raw-error, or server-credential markers.',
+  'Dashboard production smoke check passed; metadata, social image, asset base, and public asset privacy are valid.',
 );

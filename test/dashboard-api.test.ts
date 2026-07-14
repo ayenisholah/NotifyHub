@@ -494,11 +494,12 @@ afterEach(async () => {
 });
 
 describe('optional dashboard static assets', () => {
-  it('serves immutable assets and no-cache HTML with an SPA fallback', async () => {
+  it('serves hashed assets immutably, revalidates stable files, and does not cache HTML', async () => {
     const directory = await mkdtemp(path.join(tmpdir(), 'notifyhub-dashboard-'));
     temporaryDirectories.push(directory);
     await mkdir(path.join(directory, 'assets'));
     await writeFile(path.join(directory, 'index.html'), '<main>NotifyHub dashboard</main>');
+    await writeFile(path.join(directory, 'social-dashboard.png'), 'synthetic social card');
     await writeFile(path.join(directory, 'assets', 'app.js'), 'globalThis.dashboard = true;');
     const app = createApp({
       apiKey,
@@ -519,6 +520,10 @@ describe('optional dashboard static assets', () => {
     const asset = await request(app).get('/dashboard/assets/app.js');
     expect(asset.status).toBe(200);
     expect(asset.headers['cache-control']).toContain('immutable');
+
+    const stable = await request(app).get('/dashboard/social-dashboard.png');
+    expect(stable.status).toBe(200);
+    expect(stable.headers['cache-control']).toBe('public, max-age=300, must-revalidate');
 
     const directIndex = await request(app).get('/dashboard/index.html');
     expect(directIndex.headers['cache-control']).toContain('no-cache');

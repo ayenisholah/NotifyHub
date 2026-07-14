@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1200px;
+        height: 630px;
+        margin: 0;
+        overflow: hidden;
+      }
+      body {
+        display: grid;
+        grid-template-columns: 1.08fr 0.92fr;
+        color: #172033;
+        background:
+          radial-gradient(circle at 88% 12%, rgba(99, 91, 255, 0.18), transparent 290px),
+          linear-gradient(135deg, #ffffff 0%, #f6f7fb 62%, #efefff 100%);
+        font-family: Arial, Helvetica, sans-serif;
+      }
+      .copy {
+        padding: 72px 30px 66px 76px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 23px;
+        font-weight: 800;
+      }
+      .mark {
+        position: relative;
+        display: grid;
+        width: 48px;
+        height: 48px;
+        place-items: center;
+        color: #fff;
+        background: #635bff;
+        border-radius: 13px;
+      }
+      .mark::after {
+        position: absolute;
+        top: 7px;
+        right: 6px;
+        width: 11px;
+        height: 11px;
+        background: #34d399;
+        border: 3px solid #fff;
+        border-radius: 50%;
+        content: '';
+      }
+      .mark svg {
+        width: 28px;
+        height: 28px;
+      }
+      .eyebrow {
+        margin: 86px 0 17px;
+        color: #635bff;
+        font-size: 17px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+      h1 {
+        max-width: 600px;
+        margin: 0;
+        font-size: 64px;
+        letter-spacing: -0.055em;
+        line-height: 0.98;
+      }
+      .intro {
+        max-width: 555px;
+        margin: 25px 0 0;
+        color: #697184;
+        font-size: 23px;
+        line-height: 1.48;
+      }
+      .visual {
+        display: flex;
+        align-items: center;
+        padding: 60px 65px 60px 22px;
+      }
+      .panel {
+        width: 100%;
+        padding: 30px;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid #dfdff0;
+        border-radius: 26px;
+        box-shadow: 0 28px 80px rgba(50, 45, 110, 0.16);
+      }
+      .panel-label {
+        color: #848b9b;
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .event {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin: 17px 0 25px;
+        padding: 19px;
+        background: #f7f7fc;
+        border: 1px solid #e6e8ef;
+        border-radius: 15px;
+      }
+      .event-icon {
+        display: grid;
+        width: 43px;
+        height: 43px;
+        place-items: center;
+        color: #fff;
+        background: #635bff;
+        border-radius: 12px;
+        font-size: 21px;
+      }
+      .event strong {
+        display: block;
+        font-size: 18px;
+      }
+      .event span {
+        display: block;
+        margin-top: 4px;
+        color: #697184;
+        font-size: 14px;
+      }
+      .route {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+        color: #848b9b;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .route::before,
+      .route::after {
+        height: 1px;
+        flex: 1;
+        background: #e0e2eb;
+        content: '';
+      }
+      .channels {
+        display: grid;
+        gap: 11px;
+      }
+      .channel {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 15px 17px;
+        border: 1px solid #e6e8ef;
+        border-radius: 13px;
+      }
+      .channel div {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        font-size: 16px;
+        font-weight: 750;
+      }
+      .channel b {
+        display: inline-grid;
+        width: 28px;
+        height: 28px;
+        place-items: center;
+        color: #5148d8;
+        background: #ebe9ff;
+        border-radius: 8px;
+      }
+      .status {
+        color: #148560;
+        font-size: 13px;
+        font-weight: 800;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="copy">
+      <div class="brand">
+        <span class="mark">
+          <svg viewBox="0 0 32 32" aria-hidden="true">
+            <path
+              d="M7 22v-7a9 9 0 0 1 18 0v7M5 22h22M13 27h6"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="3"
+              stroke-linecap="round"
+            />
+          </svg>
+        </span>
+        NotifyHub Demo
+      </div>
+      <p class="eyebrow">Multi-channel delivery</p>
+      <h1>One event.<br />Every channel.</h1>
+      <p class="intro">
+        Send a project update and watch it arrive across email, SMS, and the in-app inbox.
+      </p>
+    </section>
+    <section class="visual" aria-label="Synthetic notification flow">
+      <div class="panel">
+        <div class="panel-label">Notification flow</div>
+        <div class="event">
+          <span class="event-icon">◆</span>
+          <div><strong>project.updated</strong><span>Website refresh</span></div>
+        </div>
+        <div class="route">routes to</div>
+        <div class="channels">
+          <div class="channel">
+            <div><b>✉</b>Email</div>
+            <span class="status">Delivered</span>
+          </div>
+          <div class="channel">
+            <div><b>◉</b>In-app inbox</div>
+            <span class="status">Delivered</span>
+          </div>
+          <div class="channel">
+            <div><b>↗</b>SMS</div>
+            <span class="status">Delivered</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </body>
+</html>

@@ -700,11 +700,14 @@ export function createApp(options: CreateAppOptions): express.Express {
       express.static(staticDirectory, {
         index: false,
         redirect: false,
-        maxAge: '1y',
-        immutable: true,
+        maxAge: '5m',
         setHeaders(response, fileName) {
           if (path.resolve(fileName) === indexFile) {
             response.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          } else if (path.relative(staticDirectory, fileName).startsWith(`assets${path.sep}`)) {
+            response.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          } else {
+            response.setHeader('Cache-Control', 'public, max-age=300, must-revalidate');
           }
         },
       }),
