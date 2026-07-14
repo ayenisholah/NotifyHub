@@ -19,7 +19,17 @@ describe('container deployment contract', () => {
     expect(dockerfile).toContain('USER node');
     expect(dockerfile).toContain('ENTRYPOINT ["notifyhub-entrypoint"]');
     expect(entrypoint).toContain('./node_modules/.bin/prisma migrate deploy');
-    for (const role of ['api', 'seed', 'router', 'digest', 'email', 'sms', 'inapp', 'demo']) {
+    for (const role of [
+      'api',
+      'seed',
+      'measure',
+      'router',
+      'digest',
+      'email',
+      'sms',
+      'inapp',
+      'demo',
+    ]) {
       expect(entrypoint).toContain(role);
     }
   });
@@ -75,5 +85,21 @@ describe('container deployment contract', () => {
     for (const excluded of ['.git', '.env', 'node_modules', '**/dist', 'test']) {
       expect(ignore.split(/\r?\n/u)).toContain(excluded);
     }
+  });
+
+  it('keeps controlled measurement isolated, synthetic, and self-cleaning', async () => {
+    const measurement = await source('scripts/measure.sh');
+
+    expect(measurement).toContain('notifyhub-measurement-$short_sha');
+    expect(measurement).toContain('NOTIFYHUB_IMAGE_TAG=$image_tag');
+    expect(measurement).toContain('NOTIFYHUB_API_PORT=4201');
+    expect(measurement).toContain('NOTIFYHUB_MAILPIT_UI_PORT=4225');
+    expect(measurement).toContain('MOCK_SMS_FAILURE_RATE=0.05');
+    expect(measurement).toContain('MEASUREMENT_NOTIFICATION_COUNT=10000');
+    expect(measurement).toContain('MEASUREMENT_USER_COUNT=100');
+    expect(measurement).toContain('compose down --volumes --remove-orphans');
+    expect(measurement).toContain('openssl rand -hex 32');
+    expect(measurement).toContain('MEASUREMENT_PRODUCTION_HEALTH_URL');
+    expect(measurement).not.toContain('/opt/notifyhub');
   });
 });

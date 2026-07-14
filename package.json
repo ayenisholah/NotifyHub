@@ -57,6 +57,7 @@
     "typecheck": "tsc -b --pretty false && npm run typecheck -w @notifyhub/widget && npm run build -w @notifyhub/widget && npm run typecheck -w @notifyhub/demo-host && npm run typecheck -w @notifyhub/dashboard",
     "verify": "npm run clean && npm run format:check && npm run lint && npm run typecheck && npm run build && npm run smoke -w @notifyhub/demo-host && npm run smoke -w @notifyhub/dashboard && npm test",
     "start:api": "npm run start:api -w @notifyhub/runtime",
+    "measure": "npm run measure -w @notifyhub/runtime",
     "start:router": "npm run start:router -w @notifyhub/runtime",
     "start:digest": "npm run start:digest -w @notifyhub/runtime",
     "start:email": "npm run start:email -w @notifyhub/runtime",

@@ -58,6 +58,7 @@ import {
 } from '@notifyhub/workers';
 
 import { seedDemoFixtures } from './demo-fixtures.js';
+import { runMeasurement } from './measurement.js';
 
 type Closeable = { close(): Promise<unknown> };
 const queueStates = ['waiting', 'active', 'delayed', 'failed', 'completed', 'paused'] as const;
@@ -330,8 +331,11 @@ async function runWorker(role: Exclude<ServiceRole, 'api'>): Promise<void> {
 const role = process.argv[2];
 if (role === 'api') await runApi();
 else if (role === 'seed') await runSeed();
+else if (role === 'measure') await runMeasurement();
 else if (['router', 'digest', 'email', 'sms', 'inapp'].includes(role ?? '')) {
   await runWorker(role as Exclude<ServiceRole, 'api'>);
 } else {
-  throw new Error('Expected process role: api, seed, router, digest, email, sms, or inapp');
+  throw new Error(
+    'Expected process role: api, seed, measure, router, digest, email, sms, or inapp',
+  );
 }
