@@ -229,7 +229,20 @@ export function createDemoServer(
 
   const staticDirectory =
     clientDirectory ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist-client');
-  app.use(express.static(staticDirectory, { index: false, maxAge: '1h', immutable: true }));
+  app.use(
+    express.static(staticDirectory, {
+      index: false,
+      maxAge: '5m',
+      setHeaders(response, fileName) {
+        const relativeName = path.relative(staticDirectory, fileName);
+        if (relativeName.startsWith(`assets${path.sep}`)) {
+          response.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        } else {
+          response.setHeader('Cache-Control', 'public, max-age=300, must-revalidate');
+        }
+      },
+    }),
+  );
   app.get(/.*/, async (request, response, next) => {
     if (!request.accepts('html')) {
       next();
