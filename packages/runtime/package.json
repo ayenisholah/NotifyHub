@@ -7,6 +7,7 @@
     "start:api": "node dist/main.js api",
     "seed:demo": "node dist/main.js seed",
     "measure": "node dist/main.js measure",
+    "retention": "node dist/main.js retention",
     "start:router": "node dist/main.js router",
     "start:digest": "node dist/main.js digest",
     "start:email": "node dist/main.js email",

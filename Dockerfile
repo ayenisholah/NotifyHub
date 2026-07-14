@@ -25,6 +25,8 @@ RUN npm run build && npm prune --omit=dev
 
 FROM base AS runtime
 
+ARG VCS_REF=unknown
+LABEL org.opencontainers.image.revision=$VCS_REF
 ENV NODE_ENV=production
 WORKDIR /app
 

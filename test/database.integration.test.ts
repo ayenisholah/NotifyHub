@@ -17,6 +17,7 @@ import {
   transitionDelivery,
   type PrismaClient,
 } from '../packages/core/src/index.js';
+import { createRetentionStore } from '../packages/runtime/src/retention.js';
 
 const executeFile = promisify(execFile);
 const prismaExecutable =
@@ -476,5 +477,85 @@ describe.sequential('atomic delivery lifecycle', () => {
       status: DeliveryStatus.QUEUED,
     });
     expect(await prisma.deliveryEvent.count({ where: { deliveryId: delivery.id } })).toBe(1);
+  });
+
+  it('retains current work and fixture configuration while pruning old terminal data', async () => {
+    const cutoff = new Date('2026-07-07T12:00:00.000Z');
+    const old = new Date(cutoff.getTime() - 1);
+    const user = await prisma.user.create({
+      data: { id: 'retention-user', email: 'retention@example.test' },
+    });
+    const template = await prisma.template.create({
+      data: {
+        event: 'retention.event',
+        channel: Channel.EMAIL,
+        body: 'Fixture configuration must survive retention.',
+      },
+    });
+    const create = (
+      id: string,
+      createdAt: Date,
+      status: NotificationStatus,
+      deliveryStatus?: DeliveryStatus,
+    ) =>
+      prisma.notification.create({
+        data: {
+          id,
+          userId: user.id,
+          event: 'retention.event',
+          payload: {},
+          createdAt,
+          status,
+          ...(deliveryStatus === undefined
+            ? {}
+            : {
+                deliveries: {
+                  create: {
+                    channel: Channel.EMAIL,
+                    provider: 'mailpit',
+                    status: deliveryStatus,
+                  },
+                },
+              }),
+        },
+      });
+
+    const expired = await create(
+      '70000000-0000-4000-8000-000000000001',
+      old,
+      NotificationStatus.ROUTED,
+      DeliveryStatus.SENT,
+    );
+    const active = await create(
+      '70000000-0000-4000-8000-000000000002',
+      old,
+      NotificationStatus.ROUTED,
+      DeliveryStatus.RETRYING,
+    );
+    const boundary = await create(
+      '70000000-0000-4000-8000-000000000003',
+      cutoff,
+      NotificationStatus.ROUTED,
+      DeliveryStatus.SENT,
+    );
+    const accepted = await create(
+      '70000000-0000-4000-8000-000000000004',
+      old,
+      NotificationStatus.ACCEPTED,
+    );
+
+    const result = await createRetentionStore(prisma).prune(cutoff);
+
+    expect(result.notifications).toBe(1);
+    expect(await prisma.notification.findUnique({ where: { id: expired.id } })).toBeNull();
+    for (const notification of [active, boundary, accepted]) {
+      await expect(
+        prisma.notification.findUnique({ where: { id: notification.id } }),
+      ).resolves.not.toBeNull();
+    }
+    await expect(prisma.user.findUnique({ where: { id: user.id } })).resolves.not.toBeNull();
+    await expect(
+      prisma.template.findUnique({ where: { id: template.id } }),
+    ).resolves.not.toBeNull();
   });
 });
