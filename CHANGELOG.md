@@ -27,5 +27,6 @@
 - Added a public synthetic-demo-user dashboard with sanitized lifecycle counters, notification timelines, opaque pagination, visibility-aware polling, in-memory DLQ retry unlocking, and optional `/dashboard` static hosting.
 - Added API and worker runtime entrypoints with liveness, dependency-aware readiness, Prometheus pipeline metrics, redacted Pino logs, WebSocket origin/heartbeat hardening, startup reconciliation, and bounded graceful shutdown.
 - Added a non-root multi-stage application image and private Compose topology with PostgreSQL 18, Redis, Mailpit, isolated API/worker/demo processes, health-gated startup, a dedicated `41xx` port range, host-Nginx routing, persistent state, and a Docker-capable CI smoke gate.
+- Added a remote-only controlled measurement harness with calibrated synthetic cohorts, run-scoped provider/queue evidence, deterministic independent SMS failures, a 10,000-notification VPS result, and linked 500-delivery SIGKILL recovery proof.
 - Added a project overview describing NotifyHub's purpose, practical applications, architecture, reliability goals, and current capabilities.
 - Established `docs/notifyhub-engineering-doc.md` as the canonical engineering source of truth.
