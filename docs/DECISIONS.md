@@ -23,3 +23,9 @@
 - Status: accepted
 - Decision: use `send-email`, `send-sms`, and `send-inapp` as the runtime channel queue names.
 - Rationale: BullMQ 5 rejects colons in queue names, so the engineering document's conceptual `send:*` labels cannot be used verbatim.
+
+## D-005 — Per-process operations and browser origin policy
+
+- Status: accepted
+- Decision: every deployable process owns health, readiness, metrics, structured logging, and graceful shutdown; browser WebSocket origins use an explicit production allowlist while origin-less non-browser clients remain supported.
+- Rationale: Compose can supervise and scrape each isolated process directly, while exact origin checks protect browser tokens without treating the advisory `Origin` header as non-browser authentication.

@@ -51,6 +51,8 @@ export interface CreateInboxGatewayOptions {
   verifyOptions?: VerifyUserTokenOptions;
   onDiagnostic?: InboxGatewayDiagnosticHandler;
   subscriber?: InboxEventSubscriber;
+  allowedOrigins?: readonly string[];
+  heartbeatIntervalMs?: number;
 }
 
 export interface InboxEventSubscriber {
@@ -70,6 +72,21 @@ const unauthorizedResponse = `HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n
 function rejectUpgrade(socket: Socket): void {
   if (socket.destroyed) return;
   socket.end(unauthorizedResponse);
+}
+
+function acceptedOrigin(
+  request: IncomingMessage,
+  allowedOrigins: readonly string[] | undefined,
+): boolean {
+  if (allowedOrigins === undefined) return true;
+  const headers = request.rawHeaders;
+  let count = 0;
+  for (let index = 0; index < headers.length; index += 2) {
+    if (headers[index]?.toLowerCase() === 'origin') count += 1;
+  }
+  if (count > 1) return false;
+  const origin = request.headers.origin;
+  return origin === undefined || allowedOrigins.includes(origin);
 }
 
 function send(socket: WebSocket, event: InboxGatewayClientEvent): void {
@@ -101,12 +118,28 @@ export async function createInboxWebSocketGateway(
   const subscriber: InboxEventSubscriber =
     options.subscriber ?? new Redis(options.redisUrl, { maxRetriesPerRequest: null });
   const rooms = new Map<string, Set<WebSocket>>();
+  const alive = new WeakMap<WebSocket, boolean>();
   let closing: Promise<void> | undefined;
+  const heartbeat = setInterval(() => {
+    for (const socket of webSockets.clients) {
+      if (alive.get(socket) === false) {
+        socket.terminate();
+        continue;
+      }
+      alive.set(socket, false);
+      socket.ping();
+    }
+  }, options.heartbeatIntervalMs ?? 30_000);
+  heartbeat.unref();
 
   const diagnostic = (value: InboxGatewayDiagnostic): void => options.onDiagnostic?.(value);
 
   const onUpgrade = (request: IncomingMessage, socket: Socket, head: Buffer): void => {
     if (closing !== undefined) {
+      rejectUpgrade(socket);
+      return;
+    }
+    if (!acceptedOrigin(request, options.allowedOrigins)) {
       rejectUpgrade(socket);
       return;
     }
@@ -121,6 +154,8 @@ export async function createInboxWebSocketGateway(
   };
 
   webSockets.on('connection', (socket: WebSocket, _request: IncomingMessage, userId: string) => {
+    alive.set(socket, true);
+    socket.on('pong', () => alive.set(socket, true));
     const room = rooms.get(userId) ?? new Set<WebSocket>();
     room.add(socket);
     rooms.set(userId, room);
@@ -179,6 +214,7 @@ export async function createInboxWebSocketGateway(
     },
     close() {
       closing ??= (async () => {
+        clearInterval(heartbeat);
         options.server.off('upgrade', onUpgrade);
         subscriber.off('message', onMessage);
         subscriber.off('error', onSubscriberError);

@@ -87,5 +87,21 @@ export type {
   RoutingEvaluationInput,
   RoutingReason,
 } from './routing-precedence.js';
+export {
+  closeHttpServer,
+  createLogger,
+  createOperationalMetrics,
+  createOperationalRequestListener,
+  createOperationalState,
+  createShutdownController,
+  startOperationalServer,
+} from './operations.js';
+export type {
+  OperationalMetrics,
+  OperationalState,
+  ReadinessCheck,
+  ServiceRole,
+  ShutdownController,
+} from './operations.js';
 
 export const packageIdentity = '@notifyhub/core' as const;

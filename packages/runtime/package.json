@@ -1,0 +1,21 @@
+{
+  "name": "@notifyhub/runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start:api": "node dist/main.js api",
+    "start:router": "node dist/main.js router",
+    "start:digest": "node dist/main.js digest",
+    "start:email": "node dist/main.js email",
+    "start:sms": "node dist/main.js sms",
+    "start:inapp": "node dist/main.js inapp"
+  },
+  "dependencies": {
+    "@notifyhub/api": "0.1.0",
+    "@notifyhub/core": "0.1.0",
+    "@notifyhub/workers": "0.1.0",
+    "bullmq": "^5.80.2",
+    "ioredis": "^5.10.1"
+  }
+}

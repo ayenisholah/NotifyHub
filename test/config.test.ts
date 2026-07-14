@@ -43,6 +43,7 @@ describe('parseConfig', () => {
       nodeEnv: 'test',
       port: 8080,
       logLevel: 'debug',
+      webSocketAllowedOrigins: ['http://localhost:3000', 'http://127.0.0.1:3000'],
       email: {
         provider: 'mailpit',
         from: 'notifyhub@example.test',
@@ -148,6 +149,23 @@ describe('parseConfig', () => {
     expect(() => parseConfig({ ...validEnvironment, EMAIL_PROVIDER: 'resend' })).toThrow(
       /RESEND_API_KEY/,
     );
+  });
+
+  it('validates, deduplicates, and production-requires WebSocket origins', () => {
+    expect(
+      parseConfig({
+        ...validEnvironment,
+        WS_ALLOWED_ORIGINS: 'https://app.example.test,https://app.example.test',
+      }).webSocketAllowedOrigins,
+    ).toEqual(['https://app.example.test']);
+    for (const value of ['ftp://app.example.test', 'https://app.example.test/path', ',']) {
+      expect(() => parseConfig({ ...validEnvironment, WS_ALLOWED_ORIGINS: value })).toThrow(
+        /WS_ALLOWED_ORIGINS/,
+      );
+    }
+    expect(() =>
+      parseConfig({ ...validEnvironment, NODE_ENV: 'production', WS_ALLOWED_ORIGINS: undefined }),
+    ).toThrow(/WS_ALLOWED_ORIGINS/);
   });
 
   it('rejects invalid email providers and Mailpit ports without exposing credentials', () => {

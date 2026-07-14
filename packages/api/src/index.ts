@@ -15,6 +15,8 @@ import {
   DeliveryStatus,
   NotificationStatus,
   packageIdentity as corePackage,
+  type OperationalMetrics,
+  type OperationalState,
   type Prisma,
   type PrismaClient,
 } from '@notifyhub/core';
@@ -269,6 +271,12 @@ export interface CreateAppOptions {
   dashboardAssetsDirectory?: string;
   dlq?: { operatorKey: string; list: ListDlqHandler; retry: RetryDlqHandler };
   inbox?: InboxHandlers & { tokenSecret: string };
+  operations?: {
+    state: OperationalState;
+    metrics: OperationalMetrics;
+    refreshMetrics?: () => Promise<void>;
+    logger?: { info(bindings: object, message: string): void };
+  };
 }
 
 const unauthorized = {
@@ -356,6 +364,53 @@ export function createApp(options: CreateAppOptions): express.Express {
   const operatorDigest =
     options.dlq === undefined ? undefined : digest(`Bearer ${options.dlq.operatorKey}`);
 
+  if (options.operations !== undefined) {
+    app.use((request, response, next) => {
+      const started = performance.now();
+      response.once('finish', () => {
+        const route =
+          request.route === undefined
+            ? 'unmatched'
+            : `${request.baseUrl}${String((request.route as { path: unknown }).path)}`;
+        const labels = { method: request.method, route };
+        options.operations!.metrics.httpDuration.observe(
+          labels,
+          (performance.now() - started) / 1_000,
+        );
+        options.operations!.metrics.httpRequests.inc({
+          ...labels,
+          status_class: `${Math.floor(response.statusCode / 100)}xx`,
+        });
+        options.operations!.logger?.info(
+          { event: 'http_request', method: request.method, route, statusCode: response.statusCode },
+          'HTTP request completed',
+        );
+      });
+      next();
+    });
+    app.get('/healthz', (_request, response) => {
+      response.set('Cache-Control', 'no-store');
+      const body = options.operations!.state.health();
+      response.status(body.status === 'ok' ? 200 : 503).json(body);
+    });
+    app.get('/readyz', async (_request, response) => {
+      response.set('Cache-Control', 'no-store');
+      const body = await options.operations!.state.readiness();
+      response.status(body.status === 'ready' ? 200 : 503).json(body);
+    });
+    app.get('/metrics', async (_request, response) => {
+      response.set('Cache-Control', 'no-store');
+      try {
+        await options.operations!.refreshMetrics?.();
+        response
+          .type(options.operations!.metrics.registry.contentType)
+          .send(await options.operations!.metrics.registry.metrics());
+      } catch {
+        response.status(503).json({ status: 'unavailable' });
+      }
+    });
+  }
+
   app.post(
     '/v1/notify',
     authenticate(expectedDigest),
@@ -377,6 +432,14 @@ export function createApp(options: CreateAppOptions): express.Express {
       }
 
       const result = await options.notify(parsed.data);
+      options.operations?.logger?.info(
+        {
+          event: 'notification_accepted',
+          notificationId: result.notificationId,
+          replayed: result.replayed,
+        },
+        'Notification accepted',
+      );
       response.status(result.replayed ? 200 : 202).json({ notificationId: result.notificationId });
     },
   );
