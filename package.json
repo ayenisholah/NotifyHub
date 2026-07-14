@@ -1,9 +1,33 @@
 {
   "name": "notifyhub",
   "version": "0.1.0",
+  "description": "Production-shaped multi-channel notification service with durable delivery workers, an embeddable inbox, and a public observability dashboard.",
   "private": true,
   "license": "MIT",
+  "author": {
+    "name": "Shola Ayeni",
+    "url": "https://github.com/ayenisholah"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ayenisholah/NotifyHub.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ayenisholah/NotifyHub/issues"
+  },
+  "homepage": "https://notifyhub.sholaayeni.xyz/",
+  "keywords": [
+    "notifications",
+    "multi-channel",
+    "email",
+    "sms",
+    "in-app",
+    "delivery-workers",
+    "observability",
+    "typescript"
+  ],
   "type": "module",
+  "packageManager": "npm@10.9.2",
   "engines": {
     "node": ">=22"
   },
