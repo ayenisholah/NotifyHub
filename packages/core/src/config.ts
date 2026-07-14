@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const secretSchema = z.string().min(32, 'must contain at least 32 characters');
 
-const localWebSocketOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000'] as const;
+const localWebSocketOrigins = ['http://localhost:4100', 'http://127.0.0.1:4100'] as const;
 
 const environmentSchema = z.object({
   DATABASE_URL: z
@@ -27,7 +27,7 @@ const environmentSchema = z.object({
     .int('must be an integer')
     .min(1, 'must be between 1 and 65535')
     .max(65535, 'must be between 1 and 65535')
-    .default(4000),
+    .default(4101),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']).default('info'),
   WS_ALLOWED_ORIGINS: z.string().optional(),
   EMAIL_PROVIDER: z.enum(['mailpit', 'resend', 'sendgrid']),

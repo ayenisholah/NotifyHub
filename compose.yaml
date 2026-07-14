@@ -1,0 +1,199 @@
+name: notifyhub
+
+x-application: &application
+  image: notifyhub:${NOTIFYHUB_IMAGE_TAG:-local}
+  build:
+    context: .
+    target: runtime
+  init: true
+  restart: unless-stopped
+  stop_grace_period: 20s
+  environment: &application-environment
+    DATABASE_URL: 'postgresql://${POSTGRES_USER:-notifyhub}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:4132/${POSTGRES_DB:-notifyhub}'
+    REDIS_URL: redis://redis:4137
+    API_KEY: '${API_KEY:?API_KEY is required}'
+    OPERATOR_KEY: '${OPERATOR_KEY:?OPERATOR_KEY is required}'
+    TOKEN_SECRET: '${TOKEN_SECRET:?TOKEN_SECRET is required}'
+    DEMO_USER_ID: '${DEMO_USER_ID:?DEMO_USER_ID is required}'
+    NODE_ENV: production
+    PORT: '4101'
+    LOG_LEVEL: '${LOG_LEVEL:-info}'
+    WS_ALLOWED_ORIGINS: '${WS_ALLOWED_ORIGINS:-http://localhost:4100}'
+    EMAIL_PROVIDER: '${EMAIL_PROVIDER:-mailpit}'
+    EMAIL_FROM: '${EMAIL_FROM:-NotifyHub <notifyhub@example.test>}'
+    MAILPIT_HOST: mailpit
+    MAILPIT_PORT: '4126'
+    RESEND_API_KEY: '${RESEND_API_KEY:-}'
+    SENDGRID_API_KEY: '${SENDGRID_API_KEY:-}'
+    SMS_PROVIDER: mock
+    MOCK_SMS_FAILURE_RATE: '${MOCK_SMS_FAILURE_RATE:-0}'
+  networks:
+    - backend
+    - egress
+
+x-worker: &worker
+  <<: *application
+  depends_on:
+    api:
+      condition: service_healthy
+  healthcheck:
+    test:
+      [
+        'CMD',
+        'node',
+        '-e',
+        "fetch('http://127.0.0.1:'+process.env.PORT+'/readyz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+      ]
+    interval: 10s
+    timeout: 3s
+    retries: 12
+    start_period: 20s
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    command: ['postgres', '-p', '4132']
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: '${POSTGRES_DB:-notifyhub}'
+      POSTGRES_USER: '${POSTGRES_USER:-notifyhub}'
+      POSTGRES_PASSWORD: '${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}'
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    networks:
+      - backend
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -p 4132 -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:8-alpine
+    command: ['redis-server', '--port', '4137', '--appendonly', 'yes']
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-p', '4137', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:v1.29.7
+    restart: unless-stopped
+    environment:
+      MP_UI_BIND_ADDR: 0.0.0.0:4125
+      MP_SMTP_BIND_ADDR: 0.0.0.0:4126
+    ports:
+      - '127.0.0.1:${NOTIFYHUB_MAILPIT_UI_PORT:-4125}:4125'
+    networks:
+      - backend
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:4125/readyz']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    <<: *application
+    command: ['api']
+    ports:
+      - '127.0.0.1:${NOTIFYHUB_API_PORT:-4101}:4101'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:4101/readyz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 18
+      start_period: 30s
+
+  worker-router:
+    <<: *worker
+    command: ['router']
+    environment:
+      <<: *application-environment
+      PORT: '4111'
+
+  worker-digest:
+    <<: *worker
+    command: ['digest']
+    environment:
+      <<: *application-environment
+      PORT: '4112'
+
+  worker-email:
+    <<: *worker
+    command: ['email']
+    environment:
+      <<: *application-environment
+      PORT: '4113'
+    depends_on:
+      api:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+
+  worker-sms:
+    <<: *worker
+    command: ['sms']
+    environment:
+      <<: *application-environment
+      PORT: '4114'
+
+  worker-inapp:
+    <<: *worker
+    command: ['inapp']
+    environment:
+      <<: *application-environment
+      PORT: '4115'
+
+  demo:
+    <<: *application
+    command: ['demo']
+    environment:
+      <<: *application-environment
+      DEMO_HOST: 0.0.0.0
+      DEMO_PORT: '4100'
+      DEMO_API_BASE_URL: http://api:4101
+    ports:
+      - '127.0.0.1:${NOTIFYHUB_DEMO_PORT:-4100}:4100'
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:4100/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+networks:
+  backend:
+    internal: true
+  egress:
+
+volumes:
+  postgres-data:
+  redis-data:

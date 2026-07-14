@@ -465,7 +465,7 @@ CI: typecheck + unit + integration (testcontainers) on push; Playwright + kill-t
 
 ## 12. Deployment & operations
 
-- **Demo deployment**: single VPS running the full Compose stack (api, 3 workers, Postgres, Redis, mailpit, demo app) behind Caddy TLS — the same Compose file as dev, which *is* the ops story: parity. (Alternative: Fly.io machines + Neon Postgres + Upstash Redis; choose whichever is cheaper to keep alive.)
+- **Demo deployment**: single VPS running the full Compose stack (API, isolated workers, Postgres, Redis, Mailpit, demo app) behind the host's existing Nginx TLS edge. NotifyHub uses dedicated loopback upstreams in the `41xx` range so it does not compete for ports 80/443 or other hosted applications.
 - **Processes**: api + each worker as separate Compose services with health checks; `restart: unless-stopped`.
 - **Config**: env-only (12-factor); `.env.example` committed; provider keys secret.
 - **Observability**: pino JSON logs with `notificationId`/`deliveryId` on every line; `/metrics` (prom-client): queue depths (BullMQ getters), deliveries by status/channel, provider latency histogram, DLQ size. Optional Grafana panel for the README.
@@ -540,7 +540,7 @@ notifyhub/
 ├── prisma/                    # schema.prisma, migrations, seed.ts (templates/users)
 ├── scripts/                   # seed.ts (throughput), kill-test.sh
 ├── test/                      # vitest unit + integration, playwright e2e
-├── deploy/                    # docker-compose.yml, Caddyfile, .env.example
+├── deploy/                    # host-Nginx routing include and validation config
 └── docs/                      # this doc, architecture.png, measurements.md
 ```
 

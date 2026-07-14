@@ -7,22 +7,39 @@ import express, { type Request, type Response } from 'express';
 import { WebSocket, WebSocketServer } from 'ws';
 
 export interface DemoConfig {
-  port: 3000;
+  host: '127.0.0.1' | '0.0.0.0';
+  port: 4100;
   apiBaseUrl: URL;
   userId: string;
   apiKey: string;
 }
 
 export function loadDemoConfig(environment: NodeJS.ProcessEnv = process.env): DemoConfig {
-  if (environment.DEMO_PORT !== '3000') throw new Error('DEMO_PORT must be 3000');
-  const apiBaseUrl = new URL(environment.DEMO_API_BASE_URL ?? '');
-  if (apiBaseUrl.href !== 'http://127.0.0.1:4000/')
-    throw new Error('DEMO_API_BASE_URL must be http://127.0.0.1:4000');
+  const host = environment.DEMO_HOST ?? '127.0.0.1';
+  if (host !== '127.0.0.1' && host !== '0.0.0.0')
+    throw new Error('DEMO_HOST must be 127.0.0.1 or 0.0.0.0');
+  if (environment.DEMO_PORT !== '4100') throw new Error('DEMO_PORT must be 4100');
+  let apiBaseUrl: URL;
+  try {
+    apiBaseUrl = new URL(environment.DEMO_API_BASE_URL ?? '');
+  } catch {
+    throw new Error('DEMO_API_BASE_URL must be an absolute HTTP(S) origin');
+  }
+  if (
+    !['http:', 'https:'].includes(apiBaseUrl.protocol) ||
+    apiBaseUrl.username !== '' ||
+    apiBaseUrl.password !== '' ||
+    apiBaseUrl.pathname !== '/' ||
+    apiBaseUrl.search !== '' ||
+    apiBaseUrl.hash !== ''
+  ) {
+    throw new Error('DEMO_API_BASE_URL must be a credential-free HTTP(S) origin');
+  }
   const userId = environment.DEMO_USER_ID?.trim();
   if (!userId || userId.length > 128) throw new Error('DEMO_USER_ID must be 1-128 characters');
   const apiKey = environment.API_KEY?.trim();
   if (!apiKey) throw new Error('API_KEY is required');
-  return { port: 3000, apiBaseUrl, userId, apiKey };
+  return { host, port: 4100, apiBaseUrl, userId, apiKey };
 }
 
 function upstreamRequest(config: DemoConfig, request: Request, response: Response): void {
@@ -136,8 +153,8 @@ export function createDemoServer(config: DemoConfig, clientDirectory?: string): 
 async function start(): Promise<void> {
   const config = loadDemoConfig();
   const server = createDemoServer(config);
-  server.listen(config.port, '127.0.0.1', () =>
-    console.log(`Acme Projects listening on http://127.0.0.1:${config.port}`),
+  server.listen(config.port, config.host, () =>
+    console.log(`Acme Projects listening on http://${config.host}:${config.port}`),
   );
 }
 

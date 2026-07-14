@@ -43,7 +43,7 @@ describe('parseConfig', () => {
       nodeEnv: 'test',
       port: 8080,
       logLevel: 'debug',
-      webSocketAllowedOrigins: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+      webSocketAllowedOrigins: ['http://localhost:4100', 'http://127.0.0.1:4100'],
       email: {
         provider: 'mailpit',
         from: 'notifyhub@example.test',
@@ -72,7 +72,7 @@ describe('parseConfig', () => {
 
     expect(parseConfig(required)).toMatchObject({
       nodeEnv: 'development',
-      port: 4000,
+      port: 4101,
       logLevel: 'info',
     });
   });
