@@ -6,7 +6,7 @@ NotifyHub is an intentionally engineered multi-channel notification service with
 
 ## Status
 
-M0 through M3 and W2D5-1 have passed, including the production-shaped Compose topology, PostgreSQL integration, public Chromium journey, worker-kill recovery, and [controlled 10,000-notification evidence](docs/measurements.md). W2D5-2 production deployment is next.
+M0 through M3 and W2D5-1 have passed, including the production-shaped Compose topology, PostgreSQL integration, public Chromium journey, worker-kill recovery, and [controlled 10,000-notification evidence](docs/measurements.md). W2D5-2 automated production deployment is implemented and remains open until its first successful live rollout is recorded in a follow-up documentation PR.
 
 The service accepts one authenticated product event and routes it to email, in-app inbox, and mock SMS while respecting preferences, quiet hours, digests, bounded retries, and an append-only delivery trail.
 
@@ -27,6 +27,8 @@ The dedicated port range is: demo `4100`, API `4101`, workers `4111–4115`, Mai
 Run `scripts/verify.ps1` on Windows or `scripts/verify.sh` on Linux. The Docker-capable CI container job additionally validates Nginx routing, builds and starts the full topology, checks loopback services, runs the Chromium journey from public trigger through inbox, dashboard, and Mailpit, and restarts an isolated email worker.
 
 The controlled measurement harness is intentionally remote-only: GitHub Actions runs the 500-delivery SIGKILL recovery gate, and `scripts/measure.sh` runs from a disposable, runner-owned VPS checkout with a separate Compose project, image tag, network, ports, volumes, and generated synthetic secrets. The accepted result sustained 199.96 notifications/second at p95 62.51 ms and converged 10,000 notifications with zero HTTP failures or residual queue work. See [the methodology, result, and limitations](docs/measurements.md); this evidence is not a production SLO or hosted-provider claim.
+
+Production releases are automatic after every green `main` run and use immutable full-SHA images, pre-rollout protected backups, automatic image rollback, daily backup and retention cron, and live browser acceptance. See [production deployment and recovery](docs/production-operations.md). GitHub Actions and the VPS are the authoritative verification environments.
 
 ## License
 

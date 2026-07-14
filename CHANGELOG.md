@@ -2,6 +2,7 @@
 
 ## 0.1.0 - Unreleased
 
+- Added fully automatic, serialized production deployments from verified `main` revisions with immutable full-SHA images, protected PostgreSQL/configuration backups, health and live-acceptance rollback, runner-owned cron, and seven-day PostgreSQL, BullMQ, and Mailpit retention.
 - Added the governance scaffold and ordered implementation workflow.
 - Added strict Node.js 22 TypeScript workspaces for shared core, API, and workers with formatting, linting, build, test, and CI verification.
 - Added immutable, Zod-validated environment configuration with safe defaults, typed normalization, and redacted variable-specific errors.

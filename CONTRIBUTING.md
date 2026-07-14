@@ -1,3 +1,3 @@
 # Contributing
 
-Use Node.js 22, create a focused branch, and include tests for behavior changes. Run `npm run verify` before opening a pull request. Never commit credentials, real recipient data, or unverified performance claims. Discuss schema-breaking changes in an issue before implementation.
+Use Node.js 22 and a focused branch named `feat/<topic>`, `fix/<topic>`, `docs/<topic>`, `test/<topic>`, `chore/<topic>`, or another Conventional Commit type. Commit subjects and pull request titles must follow Conventional Commits, and pull requests are squash-merged. Keep commit and pull request copy neutral: do not add AI, assistant, or tool attribution. Include tests for behavior changes. GitHub Actions is the authoritative verification environment; do not claim local results. Never commit credentials, real recipient data, or unverified performance claims. Discuss schema-breaking changes in an issue before implementation.

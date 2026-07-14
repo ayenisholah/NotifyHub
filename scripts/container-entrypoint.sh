@@ -14,6 +14,9 @@ case "$role" in
   measure)
     exec node packages/runtime/dist/main.js measure
     ;;
+  retention)
+    exec node packages/runtime/dist/main.js retention
+    ;;
   router|digest|email|sms|inapp)
     exec node packages/runtime/dist/main.js "$role"
     ;;
@@ -21,7 +24,7 @@ case "$role" in
     exec node packages/demo-host/dist-server/server.js
     ;;
   *)
-    echo 'Expected container role: api, seed, measure, router, digest, email, sms, inapp, or demo' >&2
+    echo 'Expected container role: api, seed, measure, retention, router, digest, email, sms, inapp, or demo' >&2
     exit 64
     ;;
 esac

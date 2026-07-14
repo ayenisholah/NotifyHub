@@ -5,6 +5,8 @@ x-application: &application
   build:
     context: .
     target: runtime
+    args:
+      VCS_REF: '${NOTIFYHUB_REVISION:-unknown}'
   init: true
   restart: unless-stopped
   stop_grace_period: 20s
@@ -27,6 +29,7 @@ x-application: &application
     SENDGRID_API_KEY: '${SENDGRID_API_KEY:-}'
     SMS_PROVIDER: mock
     MOCK_SMS_FAILURE_RATE: '${MOCK_SMS_FAILURE_RATE:-0}'
+    DEMO_DATA_RETENTION_DAYS: '${DEMO_DATA_RETENTION_DAYS:-7}'
   networks:
     - backend
     - egress
@@ -88,6 +91,7 @@ services:
     environment:
       MP_UI_BIND_ADDR: 0.0.0.0:4125
       MP_SMTP_BIND_ADDR: 0.0.0.0:4126
+      MP_MAX_AGE: 7d
     ports:
       - '127.0.0.1:${NOTIFYHUB_MAILPIT_UI_PORT:-4125}:4125'
     networks:
@@ -130,6 +134,17 @@ services:
     restart: 'no'
     depends_on:
       api:
+        condition: service_healthy
+
+  retention:
+    <<: *application
+    command: ['retention']
+    restart: 'no'
+    profiles: ['maintenance']
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   worker-router:

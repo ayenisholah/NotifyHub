@@ -59,6 +59,7 @@ import {
 
 import { seedDemoFixtures } from './demo-fixtures.js';
 import { runMeasurement } from './measurement.js';
+import { runProductionRetention } from './retention.js';
 
 type Closeable = { close(): Promise<unknown> };
 const queueStates = ['waiting', 'active', 'delayed', 'failed', 'completed', 'paused'] as const;
@@ -332,10 +333,11 @@ const role = process.argv[2];
 if (role === 'api') await runApi();
 else if (role === 'seed') await runSeed();
 else if (role === 'measure') await runMeasurement();
+else if (role === 'retention') await runProductionRetention();
 else if (['router', 'digest', 'email', 'sms', 'inapp'].includes(role ?? '')) {
   await runWorker(role as Exclude<ServiceRole, 'api'>);
 } else {
   throw new Error(
-    'Expected process role: api, seed, measure, router, digest, email, sms, or inapp',
+    'Expected process role: api, seed, measure, retention, router, digest, email, sms, or inapp',
   );
 }
