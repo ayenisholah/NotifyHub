@@ -97,7 +97,7 @@ async function waitForTerminal(expected: number): Promise<void> {
 }
 
 async function stopChild(child: ChildProcess | undefined, signal: NodeJS.Signals): Promise<void> {
-  if (child === undefined || child.exitCode !== null) return;
+  if (child === undefined || child.exitCode !== null || child.signalCode !== null) return;
   const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()));
   child.kill(signal);
   await exited;
@@ -170,8 +170,7 @@ describe.sequential('worker kill reliability gate', () => {
         ),
       );
       const killedDeliveryId = await started.sent;
-      first.kill('SIGKILL');
-      await new Promise<void>((resolve) => first!.once('exit', () => resolve()));
+      await stopChild(first, 'SIGKILL');
 
       await reconcilePersistedWork(
         prisma,
