@@ -391,7 +391,7 @@ photorealism, wide 1200x630 banner with the wordmark "NotifyHub" and subtitle
 ### 8.3 Design acceptance
 
 - [ ] Widget mockup iterated until it looks native inside the fake SaaS page; dashboard chips legible at thumbnail size
-- [ ] Architecture diagram from Prompt B exported to `docs/architecture.png`, embedded in README
+- [x] Architecture diagram exported to `docs/assets/architecture.png` with an editable SVG source, embedded in README
 - [ ] OG image from Prompt C set as the GitHub social preview
 
 ---
@@ -550,11 +550,11 @@ notifyhub/
 
 ### 16.3 Portfolio capture checklist (from the parent doc — do not skip)
 
-- [ ] Screenshot: inbox widget open + delivery dashboard behind it → Upwork thumbnail
-- [ ] Fan-out architecture diagram (Prompt B export) → Upwork media + README
-- [ ] Measured throughput from the seed run → replaces "50k+ notifications/day" in the Part 1 description
-- [ ] Re-count the edited description ≤ 600 chars before pasting
-- [ ] Live demo link (demo app + dashboard) + GitHub repo link in the Upwork entry
+- [x] Screenshot: inbox widget open + delivery dashboard behind it → Upwork thumbnail
+- [x] Fan-out architecture diagram → Upwork media + README
+- [x] Measured throughput from the seed run → replaces "50k+ notifications/day" in the Part 1 description
+- [x] Re-count the edited description ≤ 600 chars before pasting
+- [x] Live demo link (demo app + dashboard) + GitHub repo link in the Upwork entry payload
 
 ### 16.4 Glossary
 

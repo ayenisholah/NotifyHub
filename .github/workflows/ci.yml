@@ -2,6 +2,8 @@ name: Verification
 
 on:
   push:
+    branches:
+      - '**'
   pull_request:
   workflow_dispatch:
   schedule:

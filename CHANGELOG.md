@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 - Unreleased
+## 0.1.0 - 2026-07-14
 
 - Added fully automatic, serialized production deployments from verified `main` revisions with immutable full-SHA images, protected PostgreSQL/configuration backups, health and live-acceptance rollback, runner-owned cron, and seven-day PostgreSQL, BullMQ, and Mailpit retention.
 - Added the governance scaffold and ordered implementation workflow.

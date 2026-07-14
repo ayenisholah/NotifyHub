@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="750" viewBox="0 0 1000 750" role="img" aria-labelledby="title desc">
+  <title id="title">NotifyHub fan-out architecture</title>
+  <desc id="desc">A product event enters the authenticated API, is persisted to PostgreSQL, routed through BullMQ, and delivered by isolated email, SMS, and in-app workers with timelines, retries, digests, and dead-letter recovery.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07110f"/>
+      <stop offset="1" stop-color="#101a20"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#34d399"/>
+      <stop offset="1" stop-color="#2dd4bf"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".25"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0 10 5 0 10z" fill="#58d7ae"/>
+    </marker>
+    <style>
+      .box{fill:#111b20;stroke:#29423d;stroke-width:1.5;rx:16;filter:url(#shadow)}
+      .box-accent{fill:#0b251e;stroke:#34d399;stroke-width:1.5;rx:16;filter:url(#shadow)}
+      .title{fill:#f4fbf8;font:700 20px Arial,sans-serif}
+      .label{fill:#9fb5ad;font:14px Arial,sans-serif}
+      .small{fill:#7f9990;font:12px Arial,sans-serif}
+      .eyebrow{fill:#55e5b3;font:700 12px Arial,sans-serif;letter-spacing:2px}
+      .flow{fill:none;stroke:#58d7ae;stroke-width:2.5;marker-end:url(#arrow)}
+      .support{fill:none;stroke:#46625a;stroke-width:1.5;stroke-dasharray:6 6;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1000" height="750" fill="url(#background)"/>
+  <circle cx="875" cy="45" r="180" fill="#1d725b" opacity=".12"/>
+  <text x="55" y="54" class="eyebrow">NOTIFYHUB</text>
+  <text x="55" y="88" fill="#f4fbf8" font-family="Arial,sans-serif" font-size="30" font-weight="700">Durable multi-channel delivery</text>
+  <text x="55" y="114" class="label">Persist first · route asynchronously · observe every transition</text>
+
+  <rect x="55" y="175" width="155" height="105" class="box"/>
+  <text x="78" y="210" class="eyebrow">CLIENT</text>
+  <text x="78" y="240" class="title">Product event</text>
+  <text x="78" y="264" class="small">POST /v1/notify</text>
+
+  <rect x="285" y="160" width="180" height="135" class="box-accent"/>
+  <text x="310" y="197" class="eyebrow">INGEST</text>
+  <text x="310" y="228" class="title">Authenticated API</text>
+  <text x="310" y="253" class="small">validate · idempotency</text>
+  <text x="310" y="273" class="small">persist · enqueue</text>
+
+  <rect x="555" y="145" width="180" height="105" class="box"/>
+  <text x="580" y="181" class="eyebrow">SOURCE OF TRUTH</text>
+  <text x="580" y="212" class="title">PostgreSQL</text>
+  <text x="580" y="234" class="small">notifications · timelines</text>
+
+  <rect x="555" y="280" width="180" height="105" class="box"/>
+  <text x="580" y="316" class="eyebrow">WORK DISTRIBUTION</text>
+  <text x="580" y="347" class="title">Redis + BullMQ</text>
+  <text x="580" y="369" class="small">delay · retry · reconcile</text>
+
+  <rect x="810" y="145" width="135" height="240" class="box-accent"/>
+  <text x="833" y="181" class="eyebrow">ROUTER</text>
+  <text x="833" y="214" class="title">Resolve</text>
+  <text x="833" y="242" class="small">templates</text>
+  <text x="833" y="266" class="small">preferences</text>
+  <text x="833" y="290" class="small">quiet hours</text>
+  <text x="833" y="314" class="small">digests</text>
+  <text x="833" y="348" fill="#55e5b3" font-family="Arial,sans-serif" font-size="13">explain every skip</text>
+
+  <path d="M210 227H285" class="flow"/>
+  <path d="M465 205H555" class="flow"/>
+  <path d="M465 255C505 255 510 332 555 332" class="flow"/>
+  <path d="M735 332H810" class="flow"/>
+  <path d="M810 205H735" class="support"/>
+
+  <text x="55" y="440" class="eyebrow">ISOLATED DELIVERY WORKERS</text>
+  <rect x="55" y="468" width="205" height="110" class="box"/>
+  <text x="80" y="505" class="title">Email</text>
+  <text x="80" y="532" class="label">Mailpit · Resend · SendGrid</text>
+  <text x="80" y="556" class="small">provider-aware idempotency</text>
+
+  <rect x="290" y="468" width="180" height="110" class="box"/>
+  <text x="315" y="505" class="title">Mock SMS</text>
+  <text x="315" y="532" class="label">deterministic failures</text>
+  <text x="315" y="556" class="small">bounded retry evidence</text>
+
+  <rect x="500" y="468" width="205" height="110" class="box"/>
+  <text x="525" y="505" class="title">In-app inbox</text>
+  <text x="525" y="532" class="label">persist · Redis publish</text>
+  <text x="525" y="556" class="small">WebSocket + polling fallback</text>
+
+  <rect x="735" y="468" width="210" height="110" class="box-accent"/>
+  <text x="760" y="505" class="title">Dashboard</text>
+  <text x="760" y="532" class="label">sanitized timelines</text>
+  <text x="760" y="556" class="small">DLQ inspection + replay</text>
+
+  <path d="M877 385C877 430 158 422 158 468" class="flow"/>
+  <path d="M877 385C877 438 380 432 380 468" class="flow"/>
+  <path d="M877 385C877 446 602 438 602 468" class="flow"/>
+  <path d="M645 250C645 420 840 410 840 468" class="support"/>
+
+  <rect x="55" y="635" width="890" height="70" rx="18" fill="#0b1518" stroke="#29423d"/>
+  <text x="80" y="665" class="eyebrow">RECOVERY CONTRACT</text>
+  <text x="80" y="690" class="label">append-only delivery events · exponential jitter · dead-letter parking · explicit replay · startup reconciliation</text>
+</svg>
