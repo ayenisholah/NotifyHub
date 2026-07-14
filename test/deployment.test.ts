@@ -100,6 +100,9 @@ describe('container deployment contract', () => {
     expect(measurement).toContain('compose down --volumes --remove-orphans');
     expect(measurement).toContain('openssl rand -hex 32');
     expect(measurement).toContain('MEASUREMENT_PRODUCTION_HEALTH_URL');
+    expect(measurement).toContain('deploy/compose.measurement.yaml');
     expect(measurement).not.toContain('/opt/notifyhub');
+    const measurementCompose = await source('deploy/compose.measurement.yaml');
+    expect(measurementCompose).toContain("MP_MAX_MESSAGES: '50000'");
   });
 });

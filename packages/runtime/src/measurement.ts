@@ -448,7 +448,10 @@ async function ingest(config: MeasurementConfig, apiKey: string): Promise<Ingest
   };
 }
 
-async function queueSnapshot(redisUrl: string): Promise<Record<string, QueueEvidence>> {
+async function queueSnapshot(
+  redisUrl: string,
+  baseline: Readonly<Record<string, QueueEvidence>> = {},
+): Promise<Record<string, QueueEvidence>> {
   const queues = queueNames.map(
     (name) => new Queue(name, { connection: createRedisConnection(redisUrl) }),
   );
@@ -464,15 +467,16 @@ async function queueSnapshot(redisUrl: string): Promise<Record<string, QueueEvid
             'completed',
             'paused',
           );
+          const previous = baseline[queue.name];
           return [
             queue.name,
             {
-              waiting: counts.waiting ?? 0,
-              active: counts.active ?? 0,
-              delayed: counts.delayed ?? 0,
-              failed: counts.failed ?? 0,
-              completed: counts.completed ?? 0,
-              paused: counts.paused ?? 0,
+              waiting: Math.max(0, (counts.waiting ?? 0) - (previous?.waiting ?? 0)),
+              active: Math.max(0, (counts.active ?? 0) - (previous?.active ?? 0)),
+              delayed: Math.max(0, (counts.delayed ?? 0) - (previous?.delayed ?? 0)),
+              failed: Math.max(0, (counts.failed ?? 0) - (previous?.failed ?? 0)),
+              completed: Math.max(0, (counts.completed ?? 0) - (previous?.completed ?? 0)),
+              paused: Math.max(0, (counts.paused ?? 0) - (previous?.paused ?? 0)),
             },
           ] as const;
         }),
@@ -505,6 +509,7 @@ async function snapshot(
   redisUrl: string,
   events: readonly string[],
   mailpitBaseline: number | null,
+  queueBaseline: Readonly<Record<string, QueueEvidence>>,
 ): Promise<MeasurementSnapshot> {
   const notificationWhere = { event: { in: [...events] } };
   const [
@@ -531,7 +536,7 @@ async function snapshot(
     }),
     prisma.digestItem.count({ where: { notification: notificationWhere } }),
     prisma.inboxMessage.count({ where: { notification: notificationWhere } }),
-    queueSnapshot(redisUrl),
+    queueSnapshot(redisUrl, queueBaseline),
   ]);
   const deliveryCounts: Record<string, Record<string, number>> = {};
   for (const delivery of deliveries) {
@@ -657,11 +662,12 @@ async function waitForConvergence(
   deadline: number,
   pollIntervalMs: number,
   mailpitBaseline: number | null,
+  queueBaseline: Readonly<Record<string, QueueEvidence>>,
 ): Promise<MeasurementSnapshot> {
-  let current = await snapshot(prisma, redisUrl, events, mailpitBaseline);
+  let current = await snapshot(prisma, redisUrl, events, mailpitBaseline, queueBaseline);
   while (!hasConverged(current, expected) && Date.now() < deadline) {
     await sleep(pollIntervalMs);
-    current = await snapshot(prisma, redisUrl, events, mailpitBaseline);
+    current = await snapshot(prisma, redisUrl, events, mailpitBaseline, queueBaseline);
   }
   return current;
 }
@@ -723,6 +729,7 @@ export async function runMeasurement(): Promise<MeasurementReport> {
   try {
     const productionHealthyBefore = await healthy(config.productionHealthUrl);
     const mailpitBaseline = await mailpitMessageCount();
+    const queueBaseline = await queueSnapshot(appConfig.redisUrl);
     const scope = await seedWorkload(prisma, config);
     const ingestion = await ingest(config, appConfig.apiKey);
     const state = await waitForConvergence(
@@ -733,6 +740,7 @@ export async function runMeasurement(): Promise<MeasurementReport> {
       Date.now() + config.timeoutSeconds * 1_000,
       config.pollIntervalMs,
       mailpitBaseline,
+      queueBaseline,
     );
     const pipelineDurationSeconds = (performance.now() - pipelineStartedAt) / 1_000;
     const p95 = percentile(ingestion.latencies, 95);
