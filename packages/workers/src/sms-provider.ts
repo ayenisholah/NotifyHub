@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import type { SmsConfig, SmsProviderName } from '@notifyhub/core';
 
 import { ProviderDeliveryError } from './execution-error.js';
@@ -37,17 +39,9 @@ export class MockSmsProviderError extends ProviderDeliveryError {
   }
 }
 
-function fnv1a(value: string): number {
-  let hash = 0x811c9dc5;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return hash >>> 0;
-}
-
 export const deterministicMockSmsOutcome: MockSmsOutcome = (deliveryId, attempt, failureRate) =>
-  fnv1a(`${deliveryId}:${attempt}`) / 0x1_0000_0000 < failureRate;
+  createHash('sha256').update(`${deliveryId}:${attempt}`).digest().readUInt32BE(0) / 0x1_0000_0000 <
+  failureRate;
 
 export function createMockSmsProvider(
   config: SmsConfig,

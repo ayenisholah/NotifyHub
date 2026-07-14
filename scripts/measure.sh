@@ -43,7 +43,8 @@ export NOTIFYHUB_DEMO_PORT=4200
 export NOTIFYHUB_MAILPIT_UI_PORT=4225
 
 compose() {
-  docker compose --project-name "$project" --project-directory "$root" -f "$root/compose.yaml" "$@"
+  docker compose --project-name "$project" --project-directory "$root" \
+    -f "$root/compose.yaml" -f "$root/deploy/compose.measurement.yaml" "$@"
 }
 
 started=false

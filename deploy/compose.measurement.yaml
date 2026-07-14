@@ -1,0 +1,4 @@
+services:
+  mailpit:
+    environment:
+      MP_MAX_MESSAGES: '50000'

@@ -69,6 +69,20 @@ describe('deterministic mock SMS provider', () => {
     expect(new Set(first)).toEqual(new Set([true, false]));
   });
 
+  it('distributes failures independently across delivery IDs and retry attempts', () => {
+    const deliveryIds = Array.from({ length: 10_000 }, (_, index) => `delivery-${index}`);
+    const firstAttemptFailures = deliveryIds.filter((deliveryId) =>
+      deterministicMockSmsOutcome(deliveryId, 1, 0.05),
+    ).length;
+    const exhausted = deliveryIds.filter((deliveryId) =>
+      [1, 2, 3, 4, 5].every((attempt) => deterministicMockSmsOutcome(deliveryId, attempt, 0.05)),
+    ).length;
+
+    expect(firstAttemptFailures).toBeGreaterThanOrEqual(450);
+    expect(firstAttemptFailures).toBeLessThanOrEqual(550);
+    expect(exhausted).toBeLessThanOrEqual(1);
+  });
+
   it('always succeeds at zero and always fails at one', async () => {
     expect(deterministicMockSmsOutcome('delivery', 1, 0)).toBe(false);
     expect(deterministicMockSmsOutcome('delivery', 1, 1)).toBe(true);
