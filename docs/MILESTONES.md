@@ -10,4 +10,4 @@
 
 ## Current status
 
-M0, M1, and M2 passed on 2026-07-12. M3 passed its complete integration, Compose, Chromium, and worker-restart gate on 2026-07-14. W2D5-1 recorded controlled evidence and W2D5-2 completed the first unattended production deployment on 2026-07-14. `W2D5-3` is the next task and closes M4.
+M0, M1, and M2 passed on 2026-07-12. M3 passed its complete integration, Compose, Chromium, and worker-restart gate on 2026-07-14. W2D5-1 recorded controlled evidence and W2D5-2 completed the first unattended production deployment on 2026-07-14. W2D5-3 published the evidence-backed `v0.1.0` release from a fully verified production revision on 2026-07-15 and closed M4. External Upwork publication was explicitly waived after the release media were prepared; no public portfolio-entry claim is made.

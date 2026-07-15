@@ -500,7 +500,7 @@ Ship when **all** pass (mirrors + extends the parent spec's DoD):
 6. **Dashboard**: timeline + DLQ operations working; screenshot with the widget = thumbnail captured.
 7. **Throughput measured** via the seed run, recorded in `docs/measurements.md` → replaces "50k+ notifications/day" in the portfolio copy.
 8. **README**: demo GIF → architecture diagram → reliability writeup (at-least-once, DLQ, the documented duplicate window) → `docker compose up` quickstart → integration guide (curl + widget snippet).
-9. **Portfolio entry updated** per the parent doc's publishing workflow (≤ 600 chars re-count, media uploaded).
+9. **Release portfolio prepared** with verified copy and media. External Upwork publication was explicitly waived by the owner on 2026-07-15; the release does not claim that an Upwork item exists.
 
 ---
 
@@ -548,13 +548,15 @@ notifyhub/
 
 `express`, `zod`, `bullmq`, `ioredis`, `@prisma/client`, `handlebars`, `ws`, `pino`, `prom-client`, `resend`, `@sendgrid/mail`, `nodemailer` (mailpit SMTP), dev: `typescript`, `tsx`, `vitest`, `testcontainers`, `playwright`, `autocannon`.
 
-### 16.3 Portfolio capture checklist (from the parent doc — do not skip)
+### 16.3 Portfolio capture checklist
 
 - [x] Screenshot: inbox widget open + delivery dashboard behind it → Upwork thumbnail
 - [x] Fan-out architecture diagram → Upwork media + README
 - [x] Measured throughput from the seed run → replaces "50k+ notifications/day" in the Part 1 description
 - [x] Re-count the edited description ≤ 600 chars before pasting
-- [x] Live demo link (demo app + dashboard) + GitHub repo link in the Upwork entry payload
+- [x] Live demo, dashboard, repository, and release links verified
+
+The authenticated Upwork upload and publication step was explicitly skipped by the owner on 2026-07-15. The evidence media remain available in `docs/assets/` and on the GitHub release.
 
 ### 16.4 Glossary
 
