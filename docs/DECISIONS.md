@@ -35,3 +35,9 @@
 - Status: accepted
 - Decision: build one non-root application image for the API, workers, and demo; assign NotifyHub the dedicated `4100–4137` range; bind only the demo, API, and Mailpit UI to host loopback; and route public traffic through the VPS's existing Nginx installation.
 - Rationale: a shared artifact prevents process build drift, the unique range avoids existing VPS listeners, and loopback-only upstreams preserve the sanitized public boundary without competing for Nginx-owned ports 80 and 443.
+
+## D-007 — External portfolio publication waived
+
+- Status: accepted
+- Decision: close M4 with the public GitHub `v0.1.0` release, repository media, measured evidence, and verified production deployment; do not publish the optional Upwork portfolio item.
+- Rationale: the owner explicitly skipped the authenticated external-platform step on 2026-07-15. Repository and release claims remain evidence-backed, and no Upwork publication is implied.

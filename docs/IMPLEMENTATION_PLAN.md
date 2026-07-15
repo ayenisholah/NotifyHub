@@ -66,4 +66,4 @@ Tasks are executed top to bottom. The first unchecked box is the current task. D
 - [x] **W2D4-3 — CI integration and browser suites (M3)**
 - [x] **W2D5-1 — Controlled reliability and throughput evidence**
 - [x] **W2D5-2 — Production deployment**
-- [ ] **W2D5-3 — Evidence-backed release documentation (M4)**
+- [x] **W2D5-3 — Evidence-backed release documentation (M4)**
