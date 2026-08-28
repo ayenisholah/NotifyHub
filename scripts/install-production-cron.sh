@@ -2,7 +2,7 @@
 set -eu
 
 root="${NOTIFYHUB_ROOT:-/opt/notifyhub}"
-current="${NOTIFYHUB_CURRENT:-/opt/notifyhub-current}"
+current="${NOTIFYHUB_CURRENT:-$root/current}"
 cron_user="${NOTIFYHUB_CRON_USER:-runner}"
 caller="$(id -un)"
 id "$cron_user" > /dev/null 2>&1 || { echo "Cron account is missing: $cron_user" >&2; exit 77; }

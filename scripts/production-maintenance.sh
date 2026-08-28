@@ -2,7 +2,7 @@
 set -eu
 
 root="${NOTIFYHUB_ROOT:-/opt/notifyhub}"
-current="${NOTIFYHUB_CURRENT:-/opt/notifyhub-current}"
+current="${NOTIFYHUB_CURRENT:-$root/current}"
 env_file="$root/.env"
 
 docker compose --project-name notifyhub --project-directory "$current" \

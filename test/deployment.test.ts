@@ -90,6 +90,7 @@ describe('container deployment contract', () => {
     const deploy = await source('scripts/deploy-production.sh');
     const backup = await source('scripts/production-backup.sh');
     const rollback = await source('scripts/rollback-production.sh');
+    const maintenance = await source('scripts/production-maintenance.sh');
     const cron = await source('scripts/install-production-cron.sh');
 
     expect(dockerfile).toContain('org.opencontainers.image.revision=$VCS_REF');
@@ -97,6 +98,10 @@ describe('container deployment contract', () => {
     expect(workflow).toContain('cancel-in-progress: false');
     expect(workflow).toContain('environment:\n      name: production');
     expect(workflow).toContain('rollback-production.sh');
+    for (const script of [deploy, backup, rollback, maintenance, cron]) {
+      expect(script).toContain('current="${NOTIFYHUB_CURRENT:-$root/current}"');
+      expect(script).not.toContain('/opt/notifyhub-current');
+    }
     expect(deploy).toContain('notifyhub:$revision');
     expect(deploy).toContain('VCS_REF=$revision');
     expect(deploy).toContain('production-backup.sh');

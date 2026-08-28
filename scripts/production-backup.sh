@@ -4,7 +4,7 @@ set -eu
 umask 077
 
 root="${NOTIFYHUB_ROOT:-/opt/notifyhub}"
-current="${NOTIFYHUB_CURRENT:-/opt/notifyhub-current}"
+current="${NOTIFYHUB_CURRENT:-$root/current}"
 backup_root="${NOTIFYHUB_BACKUP_ROOT:-$root/backups}"
 env_file="$root/.env"
 lock_file="$root/.backup.lock"
