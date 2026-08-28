@@ -90,7 +90,7 @@ jobs:
       - name: Verify protected backup and scratch restoration
         run: |
           root="$RUNNER_TEMP/notifyhub-backup-contract"
-          current="$RUNNER_TEMP/notifyhub-current"
+          current="$root/current"
           mkdir -p "$root/backups"
           ln -s "$GITHUB_WORKSPACE" "$current"
           cat > "$root/.env" <<EOF

@@ -5,7 +5,7 @@ NotifyHub deploys automatically after a push to `main` passes the `conventions`,
 ## Host layout
 
 - `/opt/notifyhub/releases/<full-sha>` contains an immutable source release.
-- `/opt/notifyhub-current` is an atomic symlink to the active release.
+- `/opt/notifyhub/current` is the runner-owned atomic symlink to the active release. An optional root-level `/opt/notifyhub-current` compatibility symlink may point to it for older operator commands.
 - `/opt/notifyhub/.env` is the persistent production configuration.
 - `/opt/notifyhub/backups/<UTC timestamp>-<revision>` contains protected database and configuration backups.
 - `/opt/notifyhub/deployments` records the previous release and pre-deployment backup for each SHA.
@@ -20,13 +20,13 @@ GitHub then verifies the live demo and dashboard metadata, social images, manife
 For the SHA currently deployed, run as the configured privileged deployment account. Persistent configuration, backups, logs, and cron remain owned by `runner`:
 
 ```sh
-/opt/notifyhub-current/scripts/rollback-production.sh <current-full-sha>
+/opt/notifyhub/current/scripts/rollback-production.sh <current-full-sha>
 ```
 
 The command refuses a partial SHA, a non-current release, or a missing previous release. It restores the previous symlink, image configuration, and Compose topology, then checks loopback demo and API readiness. Inspect the failed release before retrying:
 
 ```sh
-cd /opt/notifyhub-current
+cd /opt/notifyhub/current
 docker compose --project-name notifyhub --env-file /opt/notifyhub/.env ps
 docker compose --project-name notifyhub --env-file /opt/notifyhub/.env logs --no-color
 ```
@@ -41,9 +41,9 @@ To validate a backup before a restore:
 cd /opt/notifyhub/backups/<backup-directory>
 sha256sum --check SHA256SUMS
 docker compose --project-name notifyhub \
-  --project-directory /opt/notifyhub-current \
+  --project-directory /opt/notifyhub/current \
   --env-file /opt/notifyhub/.env \
-  -f /opt/notifyhub-current/compose.yaml \
+  -f /opt/notifyhub/current/compose.yaml \
   exec -T postgres pg_restore --list < postgresql.dump
 ```
 
@@ -62,8 +62,8 @@ Inspect cron and run either task manually as `runner`:
 
 ```sh
 sudo crontab -u runner -l
-/opt/notifyhub-current/scripts/production-backup.sh
-/opt/notifyhub-current/scripts/production-maintenance.sh
+/opt/notifyhub/current/scripts/production-backup.sh
+/opt/notifyhub/current/scripts/production-maintenance.sh
 ```
 
 If retention fails, confirm queue state and service readiness before rerunning. If backup fails, resolve storage, permission, PostgreSQL health, or checksum errors; deployment must not proceed without a valid pre-rollout backup when a current release exists.

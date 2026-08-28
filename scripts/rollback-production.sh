@@ -8,7 +8,7 @@ case "$revision" in
 esac
 
 root="${NOTIFYHUB_ROOT:-/opt/notifyhub}"
-current="${NOTIFYHUB_CURRENT:-/opt/notifyhub-current}"
+current="${NOTIFYHUB_CURRENT:-$root/current}"
 state="$root/deployments/$revision.previous"
 env_file="$root/.env"
 lock_file="$root/.deploy.lock"
